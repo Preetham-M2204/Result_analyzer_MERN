@@ -1,0 +1,465 @@
+/**
+ * LOGIN PAGE STYLES
+ * =================
+ * Professional, modern, responsive login page
+ * 
+ * Design System:
+ * - Font: Roboto (Regular 400, Medium 500, Bold 700)
+ * - Spacing: 8px system (8, 16, 24, 32, 40, 48px)
+ * - Border Radius: 8-12px
+ * - Colors: Existing green palette
+ * - Responsive: Mobile-first approach
+ */
+
+/* ============================================================
+   FONT IMPORT
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+/* ============================================================
+   CONTAINER & BACKGROUND
+   ============================================================ */
+
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  padding: 16px;
+  overflow: hidden;
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* Animated gradient background */
+.login-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 50%, #388e3c 100%);
+  z-index: -1;
+  animation: gradientShift 10s ease infinite;
+}
+
+@keyframes gradientShift {
+  0%, 100% {
+    background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 50%, #388e3c 100%);
+  }
+  50% {
+    background: linear-gradient(135deg, #2e7d32 0%, #388e3c 50%, #43a047 100%);
+  }
+}
+
+/* ============================================================
+   LOGIN CARD
+   ============================================================ */
+
+.login-card {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
+  padding: 32px 24px;
+  width: 100%;
+  max-width: 400px;
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================================
+   LOGO
+   ============================================================ */
+
+.login-logo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.college-logo {
+  width: 80px;
+  height: auto;
+  max-height: 80px;
+  object-fit: contain;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.college-logo:hover {
+  transform: scale(1.02);
+}
+
+/* ============================================================
+   TITLE & SUBTITLE
+   ============================================================ */
+
+.login-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1b5e20;
+  text-align: center;
+  margin: 0 0 8px 0;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.login-subtitle {
+  font-size: 14px;
+  font-weight: 400;
+  color: #666666;
+  text-align: center;
+  margin: 0 0 32px 0;
+  line-height: 1.5;
+}
+
+/* ============================================================
+   ERROR MESSAGE
+   ============================================================ */
+
+.error-message {
+  background-color: #ffebee;
+  border-left: 3px solid #c62828;
+  color: #c62828;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+  animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+.error-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-8px); }
+  75% { transform: translateX(8px); }
+}
+
+/* ============================================================
+   FORM
+   ============================================================ */
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.form-input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 400;
+  font-family: 'Roboto', sans-serif;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+  background: #ffffff;
+  color: #333333;
+  box-sizing: border-box;
+}
+
+.form-input:hover:not(:disabled) {
+  border-color: #bdbdbd;
+}
+
+.form-input:focus {
+  border-color: #2e7d32;
+  box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.08);
+}
+
+.form-input:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+  color: #999999;
+}
+
+.form-input::placeholder {
+  color: #9e9e9e;
+  font-weight: 400;
+}
+
+/* Password input with toggle button */
+.password-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.password-input-wrapper .form-input {
+  width: 100%;
+  padding-right: 48px;
+}
+
+.toggle-password-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: #757575;
+  transition: color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.toggle-password-btn:hover {
+  color: #2e7d32;
+  background: rgba(46, 125, 50, 0.04);
+}
+
+.toggle-password-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* ============================================================
+   LOGIN BUTTON
+   ============================================================ */
+
+.login-button {
+  background: linear-gradient(135deg, #2e7d32 0%, #388e3c 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 14px 24px;
+  font-size: 15px;
+  font-weight: 500;
+  font-family: 'Roboto', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  letter-spacing: 0.02em;
+}
+
+.login-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(46, 125, 50, 0.24);
+}
+
+.login-button:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(46, 125, 50, 0.16);
+}
+
+.login-button:disabled {
+  background: #bdbdbd;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Loading spinner */
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   QUICK LOGIN (Development Only)
+   ============================================================ */
+
+.quick-login {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.quick-login-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: #9e9e9e;
+  text-align: center;
+  margin: 0 0 16px 0;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.quick-login-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 8px;
+}
+
+.quick-btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: 'Roboto', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  color: #ffffff;
+  letter-spacing: 0.01em;
+}
+
+.quick-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.quick-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.quick-btn.student {
+  background: linear-gradient(135deg, #1976d2 0%, #2196f3 100%);
+}
+
+.quick-btn.teacher {
+  background: linear-gradient(135deg, #7b1fa2 0%, #9c27b0 100%);
+}
+
+.quick-btn.hod {
+  background: linear-gradient(135deg, #f57c00 0%, #ff9800 100%);
+}
+
+.quick-btn.admin {
+  background: linear-gradient(135deg, #c62828 0%, #e53935 100%);
+}
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+
+.login-footer {
+  margin-top: 24px;
+  text-align: center;
+}
+
+.login-footer p {
+  font-size: 13px;
+  font-weight: 400;
+  color: #9e9e9e;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ============================================================
+   RESPONSIVE DESIGN
+   ============================================================ */
+
+/* Tablet and below */
+@media (max-width: 768px) {
+  .login-card {
+    max-width: 380px;
+    padding: 32px 20px;
+  }
+  
+  .login-title {
+    font-size: 22px;
+  }
+  
+  .quick-login-buttons {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .login-container {
+    padding: 12px;
+  }
+  
+  .login-card {
+    padding: 24px 16px;
+    max-width: 100%;
+  }
+  
+  .college-logo {
+    width: 70px;
+    max-height: 70px;
+  }
+  
+  .login-title {
+    font-size: 20px;
+  }
+  
+  .login-subtitle {
+    font-size: 13px;
+    margin-bottom: 24px;
+  }
+  
+  .form-input {
+    padding: 12px 14px;
+    font-size: 14px;
+  }
+  
+  .login-button {
+    padding: 12px 20px;
+    font-size: 14px;
+  }
+  
+  .quick-login-buttons {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  
+  .quick-btn {
+    padding: 12px 16px;
+  }
+}
+
+/* Extra small devices */
+@media (max-width: 360px) {
+  .login-card {
+    padding: 20px 12px;
+  }
+  
+  .college-logo {
+    width: 60px;
+    max-height: 60px;
+  }
+  
+  .login-title {
+    font-size: 18px;
+  }
+}

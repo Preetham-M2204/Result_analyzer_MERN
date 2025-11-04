@@ -1,0 +1,109 @@
+### VTU Results Analyzer - API Test File
+### You can use VS Code REST Client extension to run these tests
+### Or copy the curl commands to PowerShell
+
+### ==============================================
+### 1. Health Check - Verify server is running
+### ==============================================
+GET http://localhost:3000/api/health
+
+
+### ==============================================
+### 2. Login as STUDENT
+### ==============================================
+POST http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "mypt1991@gmail.com",
+  "password": "1BI23IS082"
+}
+
+### Expected Response:
+### {
+###   "success": true,
+###   "message": "Login successful",
+###   "token": "eyJhbGc...",
+###   "user": {
+###     "id": "...",
+###     "email": "mypt1991@gmail.com",
+###     "role": "STUDENT",
+###     "usn": "1BI23IS082",
+###     "name": "PREETHAM M",
+###     "mustChangePassword": true
+###   }
+### }
+
+
+### ==============================================
+### 3. Login as ADMIN
+### ==============================================
+POST http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@gmail.com",
+  "password": "admin123"
+}
+
+
+### ==============================================
+### 4. Login as TEACHER
+### ==============================================
+POST http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "abc@gmail.com",
+  "password": "T010"
+}
+
+
+### ==============================================
+### 5. Login as HOD
+### ==============================================
+POST http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "examplemail@gmail.com",
+  "password": "T001"
+}
+
+
+### ==============================================
+### 6. Get Current User (Protected Route)
+### ==============================================
+### First login and copy the token from response
+### Then replace YOUR_TOKEN_HERE with actual token
+GET http://localhost:3000/api/auth/me
+Authorization: Bearer YOUR_TOKEN_HERE
+
+
+### ==============================================
+### 7. Change Password (Protected Route)
+### ==============================================
+### First login and copy the token from response
+### Then replace YOUR_TOKEN_HERE with actual token
+POST http://localhost:3000/api/auth/change-password
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "currentPassword": "1BI23IS082",
+  "newPassword": "MyNewPassword123"
+}
+
+
+### ==============================================
+### CURL COMMANDS FOR POWERSHELL
+### ==============================================
+
+### Health Check
+# curl http://localhost:3000/api/health
+
+### Login as Student
+# curl -Method POST -Uri "http://localhost:3000/api/auth/login" -ContentType "application/json" -Body '{"email":"mypt1991@gmail.com","password":"1BI23IS082"}'
+
+### Login as Admin
+# curl -Method POST -Uri "http://localhost:3000/api/auth/login" -ContentType "application/json" -Body '{"email":"admin@gmail.com","password":"admin123"}'

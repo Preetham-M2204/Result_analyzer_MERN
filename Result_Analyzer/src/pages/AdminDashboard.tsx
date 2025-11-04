@@ -1822,8 +1822,19 @@ const AdminDashboard: React.FC = () => {
                           {assignment.subject_codes.split(',').map((code, idx) => {
                             const names = assignment.subject_names.split(',');
                             return (
-                              <div key={idx} style={{ marginBottom: '4px' }}>
-                                <strong>{code}</strong> - {names[idx]}
+                              <div 
+                                key={idx} 
+                                style={{ 
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  marginBottom: '8px',
+                                  padding: '6px 0'
+                                }}
+                              >
+                                <span>
+                                  <strong>{code}</strong> - {names[idx]}
+                                </span>
                                 <button
                                   onClick={() => handleDeleteAssignment(
                                     assignment.teacher_id,
@@ -1831,15 +1842,11 @@ const AdminDashboard: React.FC = () => {
                                     assignment.section,
                                     code
                                   )}
+                                  className="action-btn delete"
                                   style={{
-                                    marginLeft: '8px',
-                                    padding: '2px 6px',
-                                    fontSize: '11px',
-                                    background: '#f44336',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '3px',
-                                    cursor: 'pointer'
+                                    marginLeft: '12px',
+                                    minWidth: '70px',
+                                    fontSize: '12px'
                                   }}
                                 >
                                   Remove

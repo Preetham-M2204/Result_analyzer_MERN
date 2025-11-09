@@ -111,7 +111,7 @@ const HODDashboardEnhanced = () => {
   const [loadingToppers, setLoadingToppers] = useState(false);
   
   // Filters
-  const [selectedBatch, setSelectedBatch] = useState<string>('all');
+  const [selectedBatch, setSelectedBatch] = useState<string>('2022');
   const [selectedSection, setSelectedSection] = useState<string>('all');
   const [selectedSemester, setSelectedSemester] = useState<string>('1');
   const [selectedLimit, setSelectedLimit] = useState<string>('10');
@@ -135,7 +135,8 @@ const HODDashboardEnhanced = () => {
       let endpoint = '';
       const params = new URLSearchParams();
       
-      if (selectedBatch !== 'all') params.append('batch', selectedBatch);
+      // Always include batch since we removed "all" option
+      params.append('batch', selectedBatch);
       if (selectedSection !== 'all') params.append('section', selectedSection);
       params.append('limit', selectedLimit);
       
@@ -153,6 +154,11 @@ const HODDashboardEnhanced = () => {
       const resp = await apiClient.get(endpoint);
       console.log('Toppers response:', resp.data);
       const fetchedToppers = resp.data?.data?.toppers || [];
+      console.log('Fetched toppers count:', fetchedToppers.length);
+      if (fetchedToppers.length > 0) {
+        console.log('First topper sample:', fetchedToppers[0]);
+        console.log('CGPA value:', fetchedToppers[0].cgpa, 'Type:', typeof fetchedToppers[0].cgpa);
+      }
       setToppers(Array.isArray(fetchedToppers) ? fetchedToppers : []);
     } catch (err: any) {
       console.error('Failed to load toppers:', err?.response?.data || err.message);
@@ -398,7 +404,6 @@ const HODDashboardEnhanced = () => {
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: '#616161' }}>Batch</label>
                     <select value={selectedBatch} onChange={(e) => setSelectedBatch(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #e0e0e0', borderRadius: '4px', fontSize: '0.875rem' }}>
-                      <option value="all">All Batches</option>
                       {batches.map(b => <option key={b} value={b}>{b}</option>)}
                     </select>
                   </div>
@@ -464,29 +469,27 @@ const HODDashboardEnhanced = () => {
                           <tr><td colSpan={10} style={{ padding: '2rem', textAlign: 'center', color: '#757575' }}>No toppers found</td></tr>
                         )}
                         {toppers.map((s, i) => (
-                          <tr key={s.usn || i} style={{ borderBottom: '1px solid #eeeeee' }}>
+                          <tr key={s.usn || i} style={{ borderBottom: '1px solid #eeeeee', background: i % 2 === 0 ? 'white' : '#fefaf6' }}>
                             <td style={{ padding: '0.75rem' }}>
-                              <span style={{ display: 'inline-block', padding: '0.25rem 0.5rem', borderRadius: '4px', background: i < 3 ? '#1976d2' : '#e0e0e0', color: i < 3 ? 'white' : '#616161', fontWeight: 600, fontSize: '0.75rem' }}>{i + 1}</span>
+                              <span style={{ fontWeight: 600, fontSize: '0.875rem', color: i < 3 ? '#1976d2' : '#616161' }}>{i + 1}</span>
                             </td>
                             <td style={{ padding: '0.75rem', color: '#424242', fontFamily: 'monospace' }}>{s.usn}</td>
                             <td style={{ padding: '0.75rem', color: '#212121', fontWeight: 500 }}>{s.name}</td>
                             <td style={{ padding: '0.75rem', color: '#616161' }}>{s.batch}</td>
                             <td style={{ padding: '0.75rem', color: '#616161' }}>{s.section || '-'}</td>
                             {topperType === 'cgpa' && (
-                              <td style={{ padding: '0.75rem' }}>
-                                <span style={{ display: 'inline-block', padding: '0.25rem 0.5rem', borderRadius: '4px', background: '#4caf50', color: 'white', fontWeight: 600, fontSize: '0.875rem' }}>
-                                  {typeof s.cgpa === 'number' ? s.cgpa.toFixed(2) : '-'}
-                                </span>
+                              <td style={{ padding: '0.75rem', color: '#212121', fontWeight: 600, fontSize: '0.9rem' }}>
+                                {s.cgpa ? parseFloat(s.cgpa.toString()).toFixed(2) : '-'}
                               </td>
                             )}
                             {topperType === 'sgpa' && (
                               <>
-                                <td style={{ padding: '0.75rem' }}>
-                                  <span style={{ display: 'inline-block', padding: '0.25rem 0.5rem', borderRadius: '4px', background: '#4caf50', color: 'white', fontWeight: 600, fontSize: '0.875rem' }}>
-                                    {typeof s.sgpa === 'number' ? s.sgpa.toFixed(2) : '-'}
-                                  </span>
+                                <td style={{ padding: '0.75rem', color: '#212121', fontWeight: 600, fontSize: '0.9rem' }}>
+                                  {s.sgpa ? parseFloat(s.sgpa.toString()).toFixed(2) : '-'}
                                 </td>
-                                <td style={{ padding: '0.75rem', color: '#424242' }}>{typeof s.percentage === 'number' ? s.percentage.toFixed(2) + '%' : '-'}</td>
+                                <td style={{ padding: '0.75rem', color: '#424242' }}>
+                                  {s.percentage ? parseFloat(s.percentage.toString()).toFixed(2) + '%' : '-'}
+                                </td>
                               </>
                             )}
                             {topperType === 'semester-total' && (
@@ -494,13 +497,14 @@ const HODDashboardEnhanced = () => {
                                 <td style={{ padding: '0.75rem', color: '#424242', fontWeight: 500 }}>
                                   {s.cumulative_marks || s.total_marks_obtained || '-'} / {s.cumulative_maximum || s.total_marks_maximum || '-'}
                                 </td>
-                                <td style={{ padding: '0.75rem', color: '#424242' }}>{typeof s.overall_percentage === 'number' ? s.overall_percentage.toFixed(2) + '%' : (typeof s.percentage === 'number' ? s.percentage.toFixed(2) + '%' : '-')}</td>
+                                <td style={{ padding: '0.75rem', color: '#424242' }}>
+                                  {s.overall_percentage ? parseFloat(s.overall_percentage.toString()).toFixed(2) + '%' : 
+                                   (s.percentage ? parseFloat(s.percentage.toString()).toFixed(2) + '%' : '-')}
+                                </td>
                               </>
                             )}
-                            <td style={{ padding: '0.75rem' }}>
-                              <span style={{ display: 'inline-block', padding: '0.25rem 0.5rem', borderRadius: '4px', background: (s.backlog_count || s.total_backlogs || 0) > 0 ? '#f44336' : '#4caf50', color: 'white', fontWeight: 600, fontSize: '0.75rem' }}>
-                                {s.backlog_count || s.total_backlogs || 0}
-                              </span>
+                            <td style={{ padding: '0.75rem', color: (s.backlog_count || s.total_backlogs || 0) > 0 ? '#d32f2f' : '#388e3c', fontWeight: 600 }}>
+                              {s.backlog_count || s.total_backlogs || 0}
                             </td>
                           </tr>
                         ))}
@@ -555,7 +559,9 @@ const HODDashboardEnhanced = () => {
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                             <span style={{ color: '#616161' }}>Avg CGPA:</span>
-                            <span style={{ color: '#4caf50', fontWeight: 700 }}>{b.average_cgpa?.toFixed(2) || '-'}</span>
+                            <span style={{ color: '#212121', fontWeight: 700 }}>
+                              {b.average_cgpa ? parseFloat(b.average_cgpa.toString()).toFixed(2) : '-'}
+                            </span>
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                             <span style={{ color: '#616161' }}>Distinction:</span>
@@ -606,18 +612,20 @@ const HODDashboardEnhanced = () => {
                         {batchStats.length === 0 && (
                           <tr><td colSpan={8} style={{ padding: '2rem', textAlign: 'center', color: '#757575' }}>No statistics available</td></tr>
                         )}
-                        {batchStats.map(b => (
-                          <tr key={b.batch} style={{ borderBottom: '1px solid #eeeeee' }}>
+                        {batchStats.map((b, idx) => (
+                          <tr key={b.batch} style={{ borderBottom: '1px solid #eeeeee', background: idx % 2 === 0 ? 'white' : '#fefaf6' }}>
                             <td style={{ padding: '0.75rem', color: '#1976d2', fontWeight: 600 }}>{b.batch}</td>
                             <td style={{ padding: '0.75rem', color: '#424242' }}>{b.total_students}</td>
                             <td style={{ padding: '0.75rem', color: '#424242' }}>{b.total_sections}</td>
-                            <td style={{ padding: '0.75rem' }}>
-                              <span style={{ display: 'inline-block', padding: '0.25rem 0.5rem', borderRadius: '4px', background: '#4caf50', color: 'white', fontWeight: 600 }}>
-                                {b.average_cgpa?.toFixed(2) || '-'}
-                              </span>
+                            <td style={{ padding: '0.75rem', color: '#212121', fontWeight: 600 }}>
+                              {b.average_cgpa ? parseFloat(b.average_cgpa.toString()).toFixed(2) : '-'}
                             </td>
-                            <td style={{ padding: '0.75rem', color: '#4caf50', fontWeight: 600 }}>{b.highest_cgpa?.toFixed(2) || '-'}</td>
-                            <td style={{ padding: '0.75rem', color: '#616161' }}>{b.lowest_cgpa?.toFixed(2) || '-'}</td>
+                            <td style={{ padding: '0.75rem', color: '#212121', fontWeight: 600 }}>
+                              {b.highest_cgpa ? parseFloat(b.highest_cgpa.toString()).toFixed(2) : '-'}
+                            </td>
+                            <td style={{ padding: '0.75rem', color: '#616161' }}>
+                              {b.lowest_cgpa ? parseFloat(b.lowest_cgpa.toString()).toFixed(2) : '-'}
+                            </td>
                             <td style={{ padding: '0.75rem', color: '#424242' }}>{b.distinction_count || 0}</td>
                             <td style={{ padding: '0.75rem', color: '#424242' }}>{b.first_class_count || 0}</td>
                           </tr>

@@ -148,6 +148,9 @@ const getTopPerformersByCGPA = async (req, res) => {
     `, [...params, parseInt(limit)]);
 
     console.log(`Found ${toppers.length} CGPA toppers`);
+    if (toppers.length > 0) {
+      console.log('Sample topper data:', toppers[0]);
+    }
 
     res.json({
       success: true,

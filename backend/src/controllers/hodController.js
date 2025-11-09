@@ -806,7 +806,7 @@ const getDetailedResults = async (req, res) => {
     
     const whereClause = 'WHERE ' + whereConditions.join(' AND ');
     
-    // Get student-wise results with all subject details
+    // Get student-wise results with all subject details (LATEST ATTEMPT ONLY)
     const results = await executeQuery(`
       SELECT 
         s.usn,
@@ -820,6 +820,7 @@ const getDetailedResults = async (req, res) => {
         r.letter_grade,
         r.grade_points,
         r.result_status,
+        r.attempt_number,
         ss.sgpa,
         ss.percentage,
         ss.class_grade,
@@ -828,11 +829,19 @@ const getDetailedResults = async (req, res) => {
       JOIN student_details s ON r.student_usn = s.usn
       JOIN subjects sub ON r.subject_code = sub.subject_code
       LEFT JOIN student_semester_summary ss ON s.usn = ss.student_usn AND ss.semester = r.semester
+      INNER JOIN (
+        SELECT student_usn, subject_code, semester, MAX(attempt_number) as max_attempt
+        FROM results
+        GROUP BY student_usn, subject_code, semester
+      ) latest ON r.student_usn = latest.student_usn 
+                 AND r.subject_code = latest.subject_code 
+                 AND r.semester = latest.semester
+                 AND r.attempt_number = latest.max_attempt
       ${whereClause}
       ORDER BY s.section, s.usn, sub.subject_code
     `, params);
     
-    // Get subject-wise pass percentage
+    // Get subject-wise pass percentage (LATEST ATTEMPT ONLY)
     const subjectStats = await executeQuery(`
       SELECT 
         sub.subject_code,
@@ -846,6 +855,14 @@ const getDetailedResults = async (req, res) => {
       FROM results r
       JOIN student_details s ON r.student_usn = s.usn
       JOIN subjects sub ON r.subject_code = sub.subject_code
+      INNER JOIN (
+        SELECT student_usn, subject_code, semester, MAX(attempt_number) as max_attempt
+        FROM results
+        GROUP BY student_usn, subject_code, semester
+      ) latest ON r.student_usn = latest.student_usn 
+                 AND r.subject_code = latest.subject_code 
+                 AND r.semester = latest.semester
+                 AND r.attempt_number = latest.max_attempt
       ${whereClause}
       GROUP BY sub.subject_code, sub.subject_name
       ORDER BY sub.subject_code

@@ -220,7 +220,7 @@ def calculate_sgpa(semester, cursor, conn):
     
     processed = 0
     for usn in students:
-        # Get all subject results for this student in this semester
+        # Get all subject results for this student in this semester (LATEST ATTEMPT ONLY)
         cursor.execute("""
             SELECT 
                 r.subject_code,
@@ -230,8 +230,15 @@ def calculate_sgpa(semester, cursor, conn):
                 s.credits
             FROM results r
             LEFT JOIN subjects s ON r.subject_code = s.subject_code
+            INNER JOIN (
+                SELECT subject_code, MAX(attempt_number) as max_attempt
+                FROM results
+                WHERE student_usn = %s AND semester = %s
+                GROUP BY subject_code
+            ) latest ON r.subject_code = latest.subject_code 
+                       AND r.attempt_number = latest.max_attempt
             WHERE r.student_usn = %s AND r.semester = %s
-        """, (usn, semester))
+        """, (usn, semester, usn, semester))
         
         subject_results = cursor.fetchall()
         

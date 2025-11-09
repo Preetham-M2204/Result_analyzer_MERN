@@ -132,9 +132,11 @@ export const bulkImportStudents = async (students: Array<{
   usn: string;
   name: string;
   batch: number;
-  section?: string;
+  discipline: string;
   scheme: string;
-  dob?: string;
+  section?: string | null;
+  gender?: string | null;
+  dob?: string | null;
 }>) => {
   const response = await axios.post(`${API_BASE}/students/bulk`, { students }, {
     headers: getAuthHeader()

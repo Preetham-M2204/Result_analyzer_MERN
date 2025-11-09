@@ -1,4 +1,4 @@
-/**
+﻿/**
  * HOD DASHBOARD
  * =============
  * Dashboard for HOD to view department-wide analytics
@@ -50,7 +50,7 @@ const HODDashboard = () => {
           borderRadius: '10px',
           textAlign: 'center'
         }}>
-          <h2 style={{ color: '#666' }}>📈 Department Analytics Coming Soon</h2>
+          <h2 style={{ color: '#666' }}>Department Analytics Coming Soon</h2>
           <p style={{ color: '#999' }}>
             View department-wide results and analytics.
           </p>

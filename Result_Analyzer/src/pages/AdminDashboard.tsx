@@ -328,26 +328,51 @@ const AdminDashboard: React.FC = () => {
           // Convert to JSON
           const jsonData = XLSX.utils.sheet_to_json(worksheet);
           
-          console.log('📊 Parsed Excel data:', jsonData);
+          console.log('📊 Parsed Excel data (first row):', jsonData[0]);
+          console.log('📊 Available columns:', Object.keys(jsonData[0] || {}));
           
-          // Map Excel columns to our format
-          const students = jsonData.map((row: any) => ({
-            usn: String(row.USN || row.usn || '').trim().toUpperCase(),
-            name: String(row.Name || row.name || '').trim(),
-            batch: parseInt(String(row.Batch || row.batch || '2024')),
-            section: String(row.Section || row.section || 'A').trim(),
-            scheme: String(row.Scheme || row.scheme || '22').trim(),
-            dob: row.DOB || row.dob || undefined
-          })).filter(s => s.usn && s.name); // Filter out empty rows
+          // Map Excel columns to our format (including required discipline field)
+          const students = jsonData.map((row: any) => {
+            const usn = String(row.USN || row.usn || row.Usn || '').trim().toUpperCase();
+            const name = String(row.Name || row.name || row.NAME || '').trim();
+            const batch = parseInt(String(row.Batch || row.batch || row.BATCH || '2024'));
+            const discipline = String(row.Discipline || row.discipline || row.DISCIPLINE || 'Autonomous').trim();
+            
+            // Handle scheme - convert "2022" to "22", "2021" to "21", or keep as is
+            let schemeRaw = String(row.Scheme || row.scheme || row.SCHEME || '22').trim();
+            const scheme = schemeRaw.length === 4 ? schemeRaw.slice(-2) : schemeRaw; // "2022" -> "22"
+            
+            const section = String(row.Section || row.section || row.SECTION || '').trim() || null;
+            const gender = String(row.Gender || row.gender || row.GENDER || '').trim() || null;
+            
+            // Handle DOB - already handled, just extract the value
+            const dob = row.DOB || row.dob || row.Dob || null;
+            
+            return { usn, name, batch, discipline, scheme, section, gender, dob };
+          }).filter(s => s.usn && s.name); // Only require USN and Name
           
           console.log(`📋 Importing ${students.length} students...`);
+          console.log('📋 Sample student (first):', students[0]);
+          console.log('📋 Sample student (last):', students[students.length - 1]);
+          console.log('📋 FULL ARRAY (first 5):', JSON.stringify(students.slice(0, 5), null, 2));
+          console.log('📋 Array data types check:', {
+            usn: typeof students[0]?.usn,
+            name: typeof students[0]?.name,
+            batch: typeof students[0]?.batch,
+            discipline: typeof students[0]?.discipline,
+            scheme: typeof students[0]?.scheme,
+            section: typeof students[0]?.section,
+            gender: typeof students[0]?.gender,
+            dob: typeof students[0]?.dob
+          });
           
           if (students.length === 0) {
-            alert('❌ No valid students found in Excel file. Check column names: USN, Name, Batch, Section, Scheme, DOB');
+            alert('❌ No valid students found in Excel file. Check that you have USN and Name columns with data.');
             return;
           }
           
           // Send to backend
+          console.log('🚀 Sending to backend API...');
           const response = await bulkImportStudents(students);
           
           if (response.success) {
@@ -1375,7 +1400,8 @@ const AdminDashboard: React.FC = () => {
           <h2>👨‍🎓 Student Management</h2>
           <div className="section-card">
             <h3>📤 Bulk Import Students from Excel</h3>
-            <p>Upload an Excel file with columns: <strong>USN, Name, Batch, Section, Scheme, DOB</strong></p>
+            <p>Upload an Excel file with columns: <strong>USN, Name, Batch, Discipline, Scheme</strong> (Optional: Section, Gender, DOB)</p>
+            <p style={{ color: '#f44336', fontSize: '14px', marginTop: '8px' }}><strong>⚠️ Required:</strong> Discipline must be "VTU" or "Autonomous"</p>
             <input 
               type="file" 
               accept=".xlsx,.xls" 
@@ -1394,8 +1420,10 @@ const AdminDashboard: React.FC = () => {
                     <th style={{ padding: '4px 8px', border: '1px solid #ddd' }}>USN</th>
                     <th style={{ padding: '4px 8px', border: '1px solid #ddd' }}>Name</th>
                     <th style={{ padding: '4px 8px', border: '1px solid #ddd' }}>Batch</th>
-                    <th style={{ padding: '4px 8px', border: '1px solid #ddd' }}>Section</th>
+                    <th style={{ padding: '4px 8px', border: '1px solid #ddd' }}>Discipline</th>
                     <th style={{ padding: '4px 8px', border: '1px solid #ddd' }}>Scheme</th>
+                    <th style={{ padding: '4px 8px', border: '1px solid #ddd' }}>Section</th>
+                    <th style={{ padding: '4px 8px', border: '1px solid #ddd' }}>Gender</th>
                     <th style={{ padding: '4px 8px', border: '1px solid #ddd' }}>DOB</th>
                   </tr>
                 </thead>
@@ -1404,8 +1432,10 @@ const AdminDashboard: React.FC = () => {
                     <td style={{ padding: '4px 8px', border: '1px solid #ddd' }}>1BI23IS001</td>
                     <td style={{ padding: '4px 8px', border: '1px solid #ddd' }}>John Doe</td>
                     <td style={{ padding: '4px 8px', border: '1px solid #ddd' }}>2023</td>
-                    <td style={{ padding: '4px 8px', border: '1px solid #ddd' }}>A</td>
+                    <td style={{ padding: '4px 8px', border: '1px solid #ddd' }}>Autonomous</td>
                     <td style={{ padding: '4px 8px', border: '1px solid #ddd' }}>22</td>
+                    <td style={{ padding: '4px 8px', border: '1px solid #ddd' }}>A</td>
+                    <td style={{ padding: '4px 8px', border: '1px solid #ddd' }}>Male</td>
                     <td style={{ padding: '4px 8px', border: '1px solid #ddd' }}>2005-01-15</td>
                   </tr>
                 </tbody>

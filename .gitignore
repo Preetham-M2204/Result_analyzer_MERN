@@ -128,7 +128,6 @@ docker-compose*.yml~
 .env.example
 *.tar
 *.zip
-.xlsx
 # ========================================
 # Miscellaneous
 # ========================================
@@ -137,6 +136,15 @@ uploads/
 media/
 staticfiles/
 public/uploads/
+
+# Excel files (exports and reports)
+*.xlsx
+*.xls
+*.xlsm
+
+# Instruction markdown files (generated documentation)
+instructions/*.md
+!instructions/README.md
 # ========================================
 # React Frontend
 # ========================================

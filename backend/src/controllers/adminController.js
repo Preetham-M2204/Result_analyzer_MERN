@@ -13,6 +13,28 @@ const User = require('../models/User');
 const bcrypt = require('bcrypt');
 
 /**
+ * Utility: Convert DOB from DD-MM-YYYY to YYYY-MM-DD for MySQL DATE type
+ * @param {string} dob - Date string in DD-MM-YYYY format
+ * @returns {string|null} - Date string in YYYY-MM-DD format or null
+ */
+const convertDobToMySQLFormat = (dob) => {
+  if (!dob) return null;
+  
+  if (typeof dob === 'string') {
+    const dobParts = dob.split('-');
+    if (dobParts.length === 3) {
+      const [day, month, year] = dobParts;
+      // Validate that we have valid date parts
+      if (year && year.length === 4 && month && day) {
+        return `${year}-${month}-${day}`;
+      }
+    }
+  }
+  
+  return null;
+};
+
+/**
  * Get System Statistics
  * 
  * Returns overall system stats for admin dashboard
@@ -425,13 +447,31 @@ exports.resetUserPassword = async (req, res) => {
  */
 exports.addStudent = async (req, res) => {
   try {
-    const { usn, name, batch, section, scheme, dob } = req.body;
+    const { usn, name, batch, section, scheme, dob, gender, discipline } = req.body;
 
     // Validation
-    if (!usn || !name || !batch || !scheme) {
+    if (!usn || !name || !batch || !scheme || !discipline) {
       return res.status(400).json({
         success: false,
-        message: 'USN, name, batch, and scheme are required'
+        message: 'USN, name, batch, scheme, and discipline are required'
+      });
+    }
+
+    // Validate discipline enum
+    const validDisciplines = ['VTU', 'Autonomous'];
+    if (!validDisciplines.includes(discipline)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Discipline must be either "VTU" or "Autonomous"'
+      });
+    }
+
+    // Validate gender enum (optional field)
+    const validGenders = ['Male', 'Female', 'Other'];
+    if (gender && !validGenders.includes(gender)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Gender must be "Male", "Female", or "Other"'
       });
     }
 
@@ -448,20 +488,25 @@ exports.addStudent = async (req, res) => {
       });
     }
 
-    // Insert student
+    // Convert DOB to MySQL format (YYYY-MM-DD)
+    const formattedDob = convertDobToMySQLFormat(dob);
+
+    // Insert student with all required fields matching schema exactly
     const insertQuery = `
       INSERT INTO student_details 
-      (usn, name, batch, section, scheme, dob)
-      VALUES (?, ?, ?, ?, ?, ?)
+      (usn, name, gender, batch, discipline, scheme, dob, section)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     await mysqlPool.execute(insertQuery, [
       usn.toUpperCase().trim(),
       name.trim(),
-      batch,
-      section || null,
-      scheme,
-      dob || null
+      gender || null,              // ENUM('Male', 'Female', 'Other')
+      batch,                        // INT NOT NULL
+      discipline,                   // ENUM('VTU', 'Autonomous') NOT NULL
+      scheme,                       // VARCHAR(10) DEFAULT '22'
+      formattedDob,                 // DATE NULL
+      section || null               // VARCHAR(5)
     ]);
 
     console.log(`✅ Added student: ${usn} - ${name}`);
@@ -469,7 +514,7 @@ exports.addStudent = async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Student added successfully',
-      data: { usn, name, batch, section, scheme, dob }
+      data: { usn, name, gender, batch, discipline, scheme, dob: formattedDob, section }
     });
 
   } catch (error) {
@@ -485,7 +530,7 @@ exports.addStudent = async (req, res) => {
  * Bulk Import Students from Excel
  * 
  * Imports multiple students from Excel data
- * Expects array of student objects
+ * Expects array of student objects with fields: usn, name, gender, batch, discipline, scheme, dob, section
  * 
  * @route POST /api/admin/students/bulk
  * @access Protected (ADMIN only)
@@ -494,10 +539,16 @@ exports.bulkImportStudents = async (req, res) => {
   try {
     const { students } = req.body;
 
+    console.log('🔍 BULK IMPORT DEBUG - Received request');
+    console.log('📦 Students array length:', students?.length || 0);
+    console.log('📦 Students array type:', Array.isArray(students) ? 'Array' : typeof students);
+    console.log('📦 First student:', JSON.stringify(students?.[0], null, 2));
+
     if (!students || !Array.isArray(students) || students.length === 0) {
+      console.log('❌ Validation failed: students array is invalid');
       return res.status(400).json({
         success: false,
-        message: 'Students array is required'
+        message: 'Students array is required and must not be empty'
       });
     }
 
@@ -508,17 +559,53 @@ exports.bulkImportStudents = async (req, res) => {
       details: []
     };
 
+    const validDisciplines = ['VTU', 'Autonomous'];
+    const validGenders = ['Male', 'Female', 'Other'];
+
+    console.log(`🔄 Processing ${students.length} students...`);
+
     // Process each student
     for (const student of students) {
-      const { usn, name, batch, section, scheme, dob } = student;
+      const { usn, name, batch, section, scheme, dob, gender, discipline } = student;
+      
+      console.log(`\n--- Processing student: ${usn} ---`);
+      console.log('  USN:', usn, '(type:', typeof usn, ')');
+      console.log('  Name:', name, '(type:', typeof name, ')');
+      console.log('  Batch:', batch, '(type:', typeof batch, ')');
+      console.log('  Discipline:', discipline, '(type:', typeof discipline, ')');
+      console.log('  Scheme:', scheme, '(type:', typeof scheme, ')');
+      console.log('  Gender:', gender, '(type:', typeof gender, ')');
+      console.log('  DOB:', dob, '(type:', typeof dob, ')');
 
-      // Validate required fields
-      if (!usn || !name || !batch || !scheme) {
+      // Validate required fields (matching schema: usn, name, batch, discipline are NOT NULL)
+      if (!usn || !name || !batch || !discipline) {
         results.failed++;
         results.details.push({
           usn: usn || 'Unknown',
           status: 'failed',
-          reason: 'Missing required fields (usn, name, batch, or scheme)'
+          reason: 'Missing required fields (usn, name, batch, or discipline)'
+        });
+        continue;
+      }
+
+      // Validate discipline enum
+      if (!validDisciplines.includes(discipline)) {
+        results.failed++;
+        results.details.push({
+          usn,
+          status: 'failed',
+          reason: `Invalid discipline "${discipline}". Must be "VTU" or "Autonomous"`
+        });
+        continue;
+      }
+
+      // Validate gender enum (optional field)
+      if (gender && !validGenders.includes(gender)) {
+        results.failed++;
+        results.details.push({
+          usn,
+          status: 'failed',
+          reason: `Invalid gender "${gender}". Must be "Male", "Female", or "Other"`
         });
         continue;
       }
@@ -540,30 +627,59 @@ exports.bulkImportStudents = async (req, res) => {
           continue;
         }
 
-        // Insert student
+        // Insert student with all fields matching schema exactly
         const insertQuery = `
           INSERT INTO student_details 
-          (usn, name, batch, section, scheme, dob)
-          VALUES (?, ?, ?, ?, ?, ?)
+          (usn, name, gender, batch, discipline, scheme, dob, section)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
-        await mysqlPool.execute(insertQuery, [
-          usn.toUpperCase().trim(),
-          name.trim(),
-          batch,
-          section || null,
-          scheme,
-          dob || null
-        ]);
+        // Convert DOB to MySQL format using utility function
+        const formattedDob = convertDobToMySQLFormat(dob);
+        if (dob && formattedDob) {
+          console.log(`  📅 Converted DOB: ${dob} → ${formattedDob}`);
+        }
 
-        results.inserted++;
-        results.details.push({
-          usn,
-          status: 'inserted',
-          reason: 'Successfully added'
-        });
+        const insertValues = [
+          usn.toUpperCase().trim(),   // VARCHAR(20) PRIMARY KEY
+          name.trim(),                 // VARCHAR(100) NOT NULL
+          gender || null,              // ENUM('Male', 'Female', 'Other')
+          batch,                       // INT NOT NULL
+          discipline,                  // ENUM('VTU', 'Autonomous') NOT NULL
+          scheme || '22',              // VARCHAR(10) DEFAULT '22'
+          formattedDob,                // DATE NULL
+          section || null              // VARCHAR(5)
+        ];
+
+        console.log('  💾 Attempting INSERT with values:', insertValues);
+
+        try {
+          await mysqlPool.execute(insertQuery, insertValues);
+          console.log('  ✅ INSERT successful for', usn);
+
+          results.inserted++;
+          results.details.push({
+            usn,
+            status: 'inserted',
+            reason: 'Successfully added'
+          });
+        } catch (insertError) {
+          console.error('  ❌ INSERT FAILED for', usn);
+          console.error('  Error code:', insertError.code);
+          console.error('  Error message:', insertError.message);
+          console.error('  SQL State:', insertError.sqlState);
+          console.error('  SQL Message:', insertError.sqlMessage);
+          
+          results.failed++;
+          results.details.push({
+            usn,
+            status: 'failed',
+            reason: `DB Error: ${insertError.code} - ${insertError.sqlMessage || insertError.message}`
+          });
+        }
 
       } catch (error) {
+        console.error('  ❌ Outer error for', usn, ':', error.message);
         results.failed++;
         results.details.push({
           usn,
@@ -602,11 +718,11 @@ exports.addSubject = async (req, res) => {
   try {
     const { subjectCode, subjectName, semester, credits, scheme, isPlaceholder } = req.body;
 
-    // Validation
-    if (!subjectCode || !subjectName || !semester || !credits || !scheme) {
+    // Validation - matching schema requirements
+    if (!subjectCode || !subjectName || !semester || !credits) {
       return res.status(400).json({
         success: false,
-        message: 'Subject code, name, semester, credits, and scheme are required'
+        message: 'Subject code, name, semester, and credits are required'
       });
     }
 
@@ -623,20 +739,20 @@ exports.addSubject = async (req, res) => {
       });
     }
 
-    // Insert subject
+    // Insert subject - matching schema exactly: subject_code, subject_name, semester, scheme, credits, short_code
     const insertQuery = `
       INSERT INTO subjects 
-      (subject_code, subject_name, semester, credits, scheme, is_placeholder)
+      (subject_code, subject_name, semester, scheme, credits, short_code)
       VALUES (?, ?, ?, ?, ?, ?)
     `;
 
     await mysqlPool.execute(insertQuery, [
-      subjectCode.toUpperCase().trim(),
-      subjectName.trim(),
-      semester,
-      credits,
-      scheme,
-      isPlaceholder === 'yes' || isPlaceholder === true ? 1 : 0
+      subjectCode.toUpperCase().trim(),  // VARCHAR(20) PRIMARY KEY
+      subjectName.trim(),                // VARCHAR(255) NOT NULL
+      semester,                          // INT NOT NULL
+      scheme || '22',                    // VARCHAR(10) DEFAULT '22'
+      credits,                           // INT NOT NULL
+      null                               // VARCHAR(10) short_code (optional)
     ]);
 
     console.log(`✅ Added subject: ${subjectCode} - ${subjectName}`);
@@ -644,7 +760,7 @@ exports.addSubject = async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Subject added successfully',
-      data: { subjectCode, subjectName, semester, credits, scheme, isPlaceholder }
+      data: { subjectCode, subjectName, semester, credits, scheme }
     });
 
   } catch (error) {
@@ -685,15 +801,15 @@ exports.bulkImportSubjects = async (req, res) => {
 
     // Process each subject
     for (const subject of subjects) {
-      const { subjectCode, subjectName, semester, credits, scheme, isPlaceholder } = subject;
+      const { subjectCode, subjectName, semester, credits, scheme, shortCode } = subject;
 
-      // Validate required fields
-      if (!subjectCode || !subjectName || !semester || !credits || !scheme) {
+      // Validate required fields - matching schema
+      if (!subjectCode || !subjectName || !semester || !credits) {
         results.failed++;
         results.details.push({
           subjectCode: subjectCode || 'Unknown',
           status: 'failed',
-          reason: 'Missing required fields'
+          reason: 'Missing required fields (subjectCode, subjectName, semester, credits)'
         });
         continue;
       }
@@ -715,20 +831,20 @@ exports.bulkImportSubjects = async (req, res) => {
           continue;
         }
 
-        // Insert subject
+        // Insert subject - matching schema exactly
         const insertQuery = `
           INSERT INTO subjects 
-          (subject_code, subject_name, semester, credits, scheme, is_placeholder)
+          (subject_code, subject_name, semester, scheme, credits, short_code)
           VALUES (?, ?, ?, ?, ?, ?)
         `;
 
         await mysqlPool.execute(insertQuery, [
-          subjectCode.toUpperCase().trim(),
-          subjectName.trim(),
-          semester,
-          credits,
-          scheme,
-          isPlaceholder === 'yes' || isPlaceholder === 'Yes' || isPlaceholder === true ? 1 : 0
+          subjectCode.toUpperCase().trim(),  // VARCHAR(20) PRIMARY KEY
+          subjectName.trim(),                // VARCHAR(255) NOT NULL
+          semester,                          // INT NOT NULL
+          scheme || '22',                    // VARCHAR(10) DEFAULT '22'
+          credits,                           // INT NOT NULL
+          shortCode || null                  // VARCHAR(10) short_code (optional)
         ]);
 
         results.inserted++;

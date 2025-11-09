@@ -31,6 +31,11 @@ const apiClient = axios.create({
   timeout: 10000, // 10 second timeout
 });
 
+// Log the API configuration on startup
+console.log('🔧 API Client Configuration:');
+console.log('   Base URL:', API_BASE_URL);
+console.log('   Full login URL will be:', `${API_BASE_URL}/api/auth/login`);
+
 /**
  * REQUEST INTERCEPTOR
  * 
@@ -53,7 +58,10 @@ apiClient.interceptors.request.use(
     
     // Log request in development (helpful for debugging)
     if (import.meta.env.DEV) {
+      const fullUrl = `${config.baseURL || ''}${config.url || ''}`;
       console.log(`📤 ${config.method?.toUpperCase()} ${config.url}`, config.data);
+      console.log(`   Full URL: ${fullUrl}`);
+      console.log(`   Has Token: ${!!token}`);
     }
     
     return config;
@@ -77,7 +85,8 @@ apiClient.interceptors.response.use(
   (response) => {
     // Log successful response in development
     if (import.meta.env.DEV) {
-      console.log(`📥 ${response.config.method?.toUpperCase()} ${response.config.url}`, response.data);
+      console.log(`✅ ${response.config.method?.toUpperCase()} ${response.config.url} - Status: ${response.status}`);
+      console.log('   Response data:', response.data);
     }
     
     return response;
@@ -89,8 +98,12 @@ apiClient.interceptors.response.use(
       // Server responded with error status
       const status = error.response.status;
       const message = error.response.data?.message || 'An error occurred';
+      const url = error.config?.url || 'unknown';
+      const method = error.config?.method?.toUpperCase() || 'unknown';
       
-      console.error(`❌ Response Error (${status}):`, message);
+      console.error(`❌ Response Error (${status}): ${message}`);
+      console.error(`   Failed URL: ${error.config?.baseURL}${url}`);
+      console.error(`   Method: ${method}`);
       
       // Handle 401 Unauthorized (token expired or invalid)
       if (status === 401) {
@@ -113,7 +126,9 @@ apiClient.interceptors.response.use(
       
     } else if (error.request) {
       // Request made but no response received
-      console.error('❌ No response from server:', error.request);
+      console.error('❌ No response from server');
+      console.error('   This usually means the backend is not running or CORS is blocking the request');
+      console.error('   Request details:', error.request);
     } else {
       // Error setting up the request
       console.error('❌ Request setup error:', error.message);

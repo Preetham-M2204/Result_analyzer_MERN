@@ -97,12 +97,29 @@ app.use(express.urlencoded({ extended: true }));
  * - Method (GET, POST, etc.)
  * - URL path
  * - Timestamp
+ * - Request body (for POST/PUT/PATCH)
+ * - Query parameters
  * 
  * Helpful for debugging
  */
 if (process.env.NODE_ENV !== 'production') {
   app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    const timestamp = new Date().toLocaleTimeString();
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`📨 [${timestamp}] ${req.method} ${req.url}`);
+    console.log(`   Origin: ${req.get('origin') || 'N/A'}`);
+    console.log(`   Content-Type: ${req.get('content-type') || 'N/A'}`);
+    console.log(`   Authorization: ${req.get('authorization') ? 'Present ✅' : 'Not present ❌'}`);
+    
+    if (req.method !== 'GET' && Object.keys(req.body || {}).length > 0) {
+      console.log('   Body:', JSON.stringify(req.body, null, 2));
+    }
+    
+    if (Object.keys(req.query || {}).length > 0) {
+      console.log('   Query:', req.query);
+    }
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
     next();
   });
 }
@@ -222,6 +239,9 @@ app.get('/', (req, res) => {
  * - Response: 404 with error message
  */
 app.use((req, res, next) => {
+  console.error(`\n❌ 404 NOT FOUND: ${req.method} ${req.url}`);
+  console.error(`   Available routes start with: /api/auth, /api/student, /api/admin, /api/teachers, /api/scraper`);
+  
   res.status(404).json({
     success: false,
     message: `Route ${req.method} ${req.url} not found`
@@ -276,6 +296,10 @@ app.use((err, req, res, next) => {
  */
 const startServer = async () => {
   try {
+    const timestamp = new Date().toLocaleTimeString();
+    console.log('\n🔄 ═══════════════════════════════════════════════════');
+    console.log(`🔄 SERVER (RE)START at ${timestamp}`);
+    console.log('🔄 ═══════════════════════════════════════════════════\n');
     console.log('🚀 Starting VTU Results Analyzer Backend...\n');
 
     // Step 1: Connect to MongoDB

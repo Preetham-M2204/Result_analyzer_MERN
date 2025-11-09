@@ -53,6 +53,10 @@ const { mysqlPool } = require('../config/database');
  */
 const login = async (req, res) => {
   try {
+    console.log('\n🔐 LOGIN ATTEMPT');
+    console.log('   Email:', req.body.email);
+    console.log('   Password provided:', !!req.body.password);
+    
     const { email, password } = req.body;
 
     // ------------------------------------------------------------
@@ -60,6 +64,7 @@ const login = async (req, res) => {
     // ------------------------------------------------------------
     
     if (!email || !password) {
+      console.log('❌ Missing email or password');
       return res.status(400).json({
         success: false,
         message: 'Email and password are required'
@@ -75,14 +80,18 @@ const login = async (req, res) => {
      * - Password is hashed, can't query by plain text
      * - Need to fetch user first, then compare hash
      */
+    console.log('   Searching for user in MongoDB...');
     const user = await User.findOne({ email: email.toLowerCase() });
 
     if (!user) {
+      console.log('❌ User not found with email:', email);
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password'
       });
     }
+    
+    console.log('✅ User found:', { email: user.email, role: user.role });
 
     // ------------------------------------------------------------
     // Step 3: Verify password using bcrypt
@@ -100,14 +109,18 @@ const login = async (req, res) => {
      * - Same password → different hashes for different users
      * - Attacker can't use hash to login (need original password)
      */
+    console.log('   Verifying password...');
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
+      console.log('❌ Invalid password');
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password'
       });
     }
+    
+    console.log('✅ Password verified');
 
     // ------------------------------------------------------------
     // Step 4: For students, fetch name from MySQL
@@ -121,6 +134,7 @@ const login = async (req, res) => {
      */
     if (user.role === 'STUDENT' && user.usn) {
       try {
+        console.log('   Fetching student name from MySQL...');
         const [rows] = await mysqlPool.query(
           'SELECT name FROM student_details WHERE usn = ?',
           [user.usn]
@@ -129,6 +143,7 @@ const login = async (req, res) => {
         if (rows.length > 0 && rows[0].name) {
           // Update name in MongoDB if different
           if (user.name !== rows[0].name) {
+            console.log('   Updating name in MongoDB:', rows[0].name);
             user.name = rows[0].name;
             await user.save();
           }
@@ -158,6 +173,7 @@ const login = async (req, res) => {
      * - Payload: User data (base64 encoded, NOT encrypted)
      * - Signature: HMAC hash using secret (prevents tampering)
      */
+    console.log('   Generating JWT token...');
     const tokenPayload = {
       userId: user._id,
       email: user.email,
@@ -176,6 +192,8 @@ const login = async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
     );
 
+    console.log('✅ Token generated');
+
     // ------------------------------------------------------------
     // Step 6: Return success response
     // ------------------------------------------------------------
@@ -187,6 +205,8 @@ const login = async (req, res) => {
      * 3. Redirect to appropriate dashboard based on role
      * 4. If mustChangePassword === true, show password change modal
      */
+    console.log('✅ LOGIN SUCCESSFUL for', user.email, '(', user.role, ')\n');
+    
     res.json({
       success: true,
       message: 'Login successful',
@@ -206,7 +226,7 @@ const login = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('❌ LOGIN ERROR:', error);
     res.status(500).json({
       success: false,
       message: 'Login failed. Please try again.',

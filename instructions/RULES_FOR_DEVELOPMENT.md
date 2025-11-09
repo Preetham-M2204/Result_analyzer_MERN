@@ -86,7 +86,7 @@ xxl: 48px
 - Align elements properly (left, center, right)
 - Group related items together
 - Separate unrelated sections with whitespace
-
+-- let the website be responsive (ie fit any mobile or device)
 ---
 
 ### 4. COLOR PALETTE

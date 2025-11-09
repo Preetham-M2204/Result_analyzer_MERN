@@ -287,3 +287,394 @@ exports.addSection = async (req, res) => {
     });
   }
 };
+
+/**
+ * Get teacher's assigned subjects and teacher details
+ */
+exports.getTeacherSubjects = async (req, res) => {
+  try {
+    // Get teacherId from authenticated user (req.user should be set by auth middleware)
+    const teacherId = req.user?.teacherId || req.query.teacherId;
+
+    if (!teacherId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Teacher ID is required. Please ensure your account has a teacher ID assigned.'
+      });
+    }
+
+    console.log('Fetching subjects for teacher:', teacherId);
+
+    // Fetch teacher details from MySQL
+    const [teacherDetails] = await mysqlPool.execute(`
+      SELECT 
+        teacher_id,
+        teacher_name
+      FROM teachers
+      WHERE teacher_id = ?
+    `, [teacherId]);
+
+    if (teacherDetails.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: `Teacher with ID ${teacherId} not found in database. Please contact admin.`
+      });
+    }
+
+    // Fetch assigned subjects
+    const [subjects] = await mysqlPool.execute(`
+      SELECT DISTINCT
+        s.subject_code,
+        s.subject_name,
+        s.semester,
+        s.credits,
+        tsa.batch,
+        tsa.section
+      FROM teacher_subject_assignments tsa
+      JOIN subjects s ON tsa.subject_code = s.subject_code
+      WHERE tsa.teacher_id = ?
+      ORDER BY tsa.batch DESC, s.semester, tsa.section, s.subject_code
+    `, [teacherId]);
+
+    console.log(`Found ${subjects.length} subject assignments for teacher ${teacherId}`);
+
+    res.status(200).json({
+      success: true,
+      teacher: teacherDetails[0],
+      subjects
+    });
+  } catch (error) {
+    console.error('Get teacher subjects error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch teacher subjects',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get detailed subject analysis for teacher
+ */
+exports.getSubjectAnalysis = async (req, res) => {
+  try {
+    const { subjectCode, batch, section } = req.query;
+
+    if (!subjectCode || !batch) {
+      return res.status(400).json({
+        success: false,
+        message: 'Subject code and batch are required'
+      });
+    }
+
+    let whereClause = 'WHERE r.subject_code = ? AND s.batch = ?';
+    let params = [subjectCode, parseInt(batch)];
+
+    if (section) {
+      whereClause += ' AND s.section = ?';
+      params.push(section);
+    }
+
+    // Overall statistics
+    const [overallStats] = await mysqlPool.execute(`
+      SELECT 
+        COUNT(DISTINCT s.usn) as total_students,
+        SUM(CASE WHEN r.result_status != 'FAIL' THEN 1 ELSE 0 END) as passed_count,
+        SUM(CASE WHEN r.result_status = 'FAIL' THEN 1 ELSE 0 END) as failed_count,
+        ROUND((SUM(CASE WHEN r.result_status != 'FAIL' THEN 1 ELSE 0 END) / COUNT(*)) * 100, 2) as pass_percentage,
+        AVG(r.total_marks) as average_marks,
+        MAX(r.total_marks) as highest_marks,
+        MIN(r.total_marks) as lowest_marks,
+        AVG(r.internal_marks) as avg_internal,
+        AVG(r.external_marks) as avg_external
+      FROM results r
+      JOIN student_details s ON r.student_usn = s.usn
+      ${whereClause}
+    `, params);
+
+    // Grade distribution
+    const [gradeDistribution] = await mysqlPool.execute(`
+      SELECT 
+        r.letter_grade,
+        MAX(r.grade_points) as grade_points,
+        COUNT(*) as count,
+        ROUND((COUNT(*) * 100.0 / (
+          SELECT COUNT(*) 
+          FROM results r2 
+          JOIN student_details s2 ON r2.student_usn = s2.usn 
+          WHERE r2.subject_code = ? AND s2.batch = ? ${section ? 'AND s2.section = ?' : ''}
+        )), 2) as percentage
+      FROM results r
+      JOIN student_details s ON r.student_usn = s.usn
+      ${whereClause}
+      GROUP BY r.letter_grade
+      ORDER BY grade_points DESC
+    `, [...params, ...params]);
+
+    // Gender-wise performance
+    const [genderStats] = await mysqlPool.execute(`
+      SELECT 
+        s.gender,
+        COUNT(DISTINCT s.usn) as total_students,
+        SUM(CASE WHEN r.result_status != 'FAIL' THEN 1 ELSE 0 END) as passed_count,
+        SUM(CASE WHEN r.result_status = 'FAIL' THEN 1 ELSE 0 END) as failed_count,
+        ROUND((SUM(CASE WHEN r.result_status != 'FAIL' THEN 1 ELSE 0 END) / COUNT(*)) * 100, 2) as pass_percentage,
+        AVG(r.total_marks) as average_marks,
+        MAX(r.total_marks) as highest_marks
+      FROM results r
+      JOIN student_details s ON r.student_usn = s.usn
+      ${whereClause}
+      GROUP BY s.gender
+    `, params);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        overallStats: overallStats[0] || {},
+        gradeDistribution,
+        genderStats
+      }
+    });
+  } catch (error) {
+    console.error('Get subject analysis error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch subject analysis',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get toppers for a subject
+ * UPDATED: Fixed parameter handling for LIMIT clause
+ */
+exports.getSubjectToppers = async (req, res) => {
+  try {
+    const { subjectCode, batch, section, limit = 10 } = req.query;
+
+    if (!subjectCode || !batch) {
+      return res.status(400).json({
+        success: false,
+        message: 'Subject code and batch are required'
+      });
+    }
+
+    let params = [subjectCode, batch.toString()];
+    let queryParams = [subjectCode, batch.toString()];
+
+    if (section) {
+      params.push(section);
+      queryParams.push(section);
+    }
+
+    // Add limit to query params - TRY AS STRING
+    queryParams.push(limit.toString());
+    
+    console.log('🔍 DEBUG TOPPERS QUERY:');
+    console.log('  section provided:', !!section);
+    console.log('  params for gender queries:', params);
+    console.log('  queryParams for toppers:', queryParams);
+    console.log('  queryParams types:', queryParams.map(p => typeof p));
+
+    // Build WHERE clause dynamically in the query itself
+    let topperQuery = `
+      SELECT 
+        s.usn,
+        s.name,
+        s.gender,
+        s.section,
+        r.internal_marks,
+        r.external_marks,
+        r.total_marks,
+        r.letter_grade,
+        r.result_status
+      FROM results r
+      JOIN student_details s ON r.student_usn = s.usn
+      WHERE r.subject_code = ? AND s.batch = ?`;
+    
+    if (section) {
+      topperQuery += ` AND s.section = ?`;
+    }
+    
+    topperQuery += `
+      ORDER BY r.total_marks DESC, r.letter_grade
+      LIMIT ?
+    `;
+
+    console.log('  Query has', (topperQuery.match(/\?/g) || []).length, 'placeholders');
+    console.log('  Providing', queryParams.length, 'parameters');
+
+    // Overall toppers
+    const [toppers] = await mysqlPool.execute(topperQuery, queryParams);
+
+    // Gender-wise toppers - build separate queries
+    let maleQuery = `
+      SELECT 
+        s.usn,
+        s.name,
+        s.section,
+        r.internal_marks,
+        r.external_marks,
+        r.total_marks,
+        r.letter_grade
+      FROM results r
+      JOIN student_details s ON r.student_usn = s.usn
+      WHERE r.subject_code = ? AND s.batch = ?`;
+    
+    let femaleQuery = `
+      SELECT 
+        s.usn,
+        s.name,
+        s.section,
+        r.internal_marks,
+        r.external_marks,
+        r.total_marks,
+        r.letter_grade
+      FROM results r
+      JOIN student_details s ON r.student_usn = s.usn
+      WHERE r.subject_code = ? AND s.batch = ?`;
+    
+    if (section) {
+      maleQuery += ` AND s.section = ?`;
+      femaleQuery += ` AND s.section = ?`;
+    }
+    
+    maleQuery += ` AND s.gender = 'Male' ORDER BY r.total_marks DESC LIMIT 5`;
+    femaleQuery += ` AND s.gender = 'Female' ORDER BY r.total_marks DESC LIMIT 5`;
+
+    const [maleToppers] = await mysqlPool.execute(maleQuery, params);
+    const [femaleToppers] = await mysqlPool.execute(femaleQuery, params);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        toppers,
+        maleToppers,
+        femaleToppers
+      }
+    });
+  } catch (error) {
+    console.error('Get subject toppers error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch subject toppers',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get list of students who failed the subject
+ */
+exports.getFailedStudents = async (req, res) => {
+  try {
+    const { subjectCode, batch, section } = req.query;
+
+    if (!subjectCode || !batch) {
+      return res.status(400).json({
+        success: false,
+        message: 'Subject code and batch are required'
+      });
+    }
+
+    let whereClause = 'WHERE r.subject_code = ? AND s.batch = ? AND r.result_status = ?';
+    let params = [subjectCode, parseInt(batch), 'FAIL'];
+
+    if (section) {
+      whereClause += ' AND s.section = ?';
+      params.push(section);
+    }
+
+    const [failedStudents] = await mysqlPool.execute(`
+      SELECT 
+        s.usn,
+        s.name,
+        s.gender,
+        s.section,
+        r.internal_marks,
+        r.external_marks,
+        r.total_marks,
+        r.letter_grade,
+        r.attempt_number
+      FROM results r
+      JOIN student_details s ON r.student_usn = s.usn
+      ${whereClause}
+      ORDER BY s.section, s.usn
+    `, params);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        failedStudents,
+        count: failedStudents.length
+      }
+    });
+  } catch (error) {
+    console.error('Get failed students error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch failed students',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get all student results for a subject
+ */
+exports.getAllSubjectResults = async (req, res) => {
+  try {
+    const { subjectCode, batch, section } = req.query;
+
+    if (!subjectCode || !batch) {
+      return res.status(400).json({
+        success: false,
+        message: 'Subject code and batch are required'
+      });
+    }
+
+    let whereClause = 'WHERE r.subject_code = ? AND s.batch = ?';
+    let params = [subjectCode, parseInt(batch)];
+
+    if (section) {
+      whereClause += ' AND s.section = ?';
+      params.push(section);
+    }
+
+    const [allResults] = await mysqlPool.execute(`
+      SELECT 
+        s.usn,
+        s.name,
+        s.gender,
+        s.section,
+        r.internal_marks,
+        r.external_marks,
+        r.total_marks,
+        r.letter_grade,
+        r.result_status,
+        r.attempt_number
+      FROM results r
+      JOIN student_details s ON r.student_usn = s.usn
+      ${whereClause}
+      ORDER BY r.total_marks DESC, s.usn
+    `, params);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        results: allResults,
+        count: allResults.length
+      }
+    });
+  } catch (error) {
+    console.error('Get all subject results error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch subject results',
+      error: error.message
+    });
+  }
+};
+
+

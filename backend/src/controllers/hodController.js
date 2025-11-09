@@ -838,8 +838,8 @@ const getDetailedResults = async (req, res) => {
         sub.subject_code,
         sub.subject_name,
         COUNT(*) as total_students,
-        SUM(CASE WHEN r.result_status = 'PASS' THEN 1 ELSE 0 END) as passed_count,
-        ROUND((SUM(CASE WHEN r.result_status = 'PASS' THEN 1 ELSE 0 END) / COUNT(*)) * 100, 2) as pass_percentage,
+        SUM(CASE WHEN r.result_status != 'FAIL' THEN 1 ELSE 0 END) as passed_count,
+        ROUND((SUM(CASE WHEN r.result_status != 'FAIL' THEN 1 ELSE 0 END) / COUNT(*)) * 100, 2) as pass_percentage,
         AVG(r.total_marks) as average_marks,
         MAX(r.total_marks) as highest_marks,
         MIN(r.total_marks) as lowest_marks
@@ -851,20 +851,37 @@ const getDetailedResults = async (req, res) => {
       ORDER BY sub.subject_code
     `, params);
     
-    // Get overall semester statistics
+    // Get overall semester statistics - Calculate pass/fail from actual results
     const overallStats = await executeQuery(`
       SELECT 
         COUNT(DISTINCT s.usn) as total_students,
         AVG(ss.sgpa) as average_sgpa,
         MAX(ss.sgpa) as highest_sgpa,
         MIN(ss.sgpa) as lowest_sgpa,
-        SUM(CASE WHEN ss.backlog_count = 0 THEN 1 ELSE 0 END) as students_passed,
-        SUM(CASE WHEN ss.backlog_count > 0 THEN 1 ELSE 0 END) as students_with_backlogs
-      FROM student_semester_summary ss
-      JOIN student_details s ON ss.student_usn = s.usn
-      WHERE s.batch = ? AND ss.semester = ?
+        COUNT(DISTINCT CASE 
+          WHEN NOT EXISTS (
+            SELECT 1 FROM results r2 
+            WHERE r2.student_usn = s.usn 
+            AND r2.semester = ? 
+            AND r2.result_status = 'FAIL'
+          ) THEN s.usn 
+        END) as students_passed,
+        COUNT(DISTINCT CASE 
+          WHEN EXISTS (
+            SELECT 1 FROM results r2 
+            WHERE r2.student_usn = s.usn 
+            AND r2.semester = ? 
+            AND r2.result_status = 'FAIL'
+          ) THEN s.usn 
+        END) as students_with_backlogs
+      FROM student_details s
+      LEFT JOIN student_semester_summary ss ON s.usn = ss.student_usn AND ss.semester = ?
+      WHERE s.batch = ?
       ${section ? 'AND s.section = ?' : ''}
-    `, section ? [parseInt(batch), parseInt(semester), section] : [parseInt(batch), parseInt(semester)]);
+      AND EXISTS (SELECT 1 FROM results r WHERE r.student_usn = s.usn AND r.semester = ?)
+    `, section ? 
+      [parseInt(semester), parseInt(semester), parseInt(semester), parseInt(batch), section, parseInt(semester)] : 
+      [parseInt(semester), parseInt(semester), parseInt(semester), parseInt(batch), parseInt(semester)]);
 
     console.log(`Fetched detailed results: ${results.length} records, ${subjectStats.length} subjects`);
 

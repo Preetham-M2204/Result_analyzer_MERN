@@ -206,7 +206,7 @@ const HODDashboardEnhanced = () => {
             'Name': t.name,
             'Batch': t.batch,
             'Section': t.section || '-',
-            'CGPA': t.cgpa?.toFixed(2) || '-',
+            'CGPA': t.cgpa ? parseFloat(t.cgpa.toString()).toFixed(2) : '-',
             'Backlogs': t.total_backlogs || 0
           }));
           filename = `CGPA_Toppers_${selectedBatch}_${new Date().toISOString().split('T')[0]}`;
@@ -218,8 +218,8 @@ const HODDashboardEnhanced = () => {
             'Batch': t.batch,
             'Section': t.section || '-',
             'Semester': t.semester,
-            'SGPA': t.sgpa?.toFixed(2) || '-',
-            'Percentage': t.percentage?.toFixed(2) || '-',
+            'SGPA': t.sgpa ? parseFloat(t.sgpa.toString()).toFixed(2) : '-',
+            'Percentage': t.percentage ? parseFloat(t.percentage.toString()).toFixed(2) : '-',
             'Grade': t.class_grade || '-',
             'Backlogs': t.backlog_count || 0
           }));
@@ -234,7 +234,7 @@ const HODDashboardEnhanced = () => {
             'Semester': t.semester,
             'Total Marks': t.cumulative_marks || '-',
             'Maximum': t.cumulative_maximum || '-',
-            'Percentage': t.overall_percentage?.toFixed(2) || '-'
+            'Percentage': t.overall_percentage ? parseFloat(t.overall_percentage.toString()).toFixed(2) : '-'
           }));
           filename = `Semester_Total_Toppers_${selectedSemester}_${selectedBatch}_${new Date().toISOString().split('T')[0]}`;
         }
@@ -243,9 +243,9 @@ const HODDashboardEnhanced = () => {
           'Batch': b.batch,
           'Total Students': b.total_students,
           'Sections': b.total_sections,
-          'Average CGPA': b.average_cgpa?.toFixed(2) || '-',
-          'Highest CGPA': b.highest_cgpa?.toFixed(2) || '-',
-          'Lowest CGPA': b.lowest_cgpa?.toFixed(2) || '-',
+          'Average CGPA': b.average_cgpa ? parseFloat(b.average_cgpa.toString()).toFixed(2) : '-',
+          'Highest CGPA': b.highest_cgpa ? parseFloat(b.highest_cgpa.toString()).toFixed(2) : '-',
+          'Lowest CGPA': b.lowest_cgpa ? parseFloat(b.lowest_cgpa.toString()).toFixed(2) : '-',
           'Distinction': b.distinction_count || 0,
           'First Class': b.first_class_count || 0
         }));

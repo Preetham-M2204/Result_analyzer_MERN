@@ -65,6 +65,7 @@ const HODDetailedAnalytics = () => {
   const [overallStats, setOverallStats] = useState<OverallStat | null>(null);
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'student' | 'subject'>('subject');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   
   const batches = [2022, 2023, 2024];
   const sections = ['A', 'B', 'C', 'D'];
@@ -106,8 +107,8 @@ const HODDetailedAnalytics = () => {
         'Subject Name': s.subject_name,
         'Total Students': s.total_students,
         'Passed': s.passed_count,
-        'Pass %': s.pass_percentage?.toFixed(2) + '%',
-        'Average': s.average_marks?.toFixed(2),
+        'Pass %': (s.pass_percentage ? parseFloat(s.pass_percentage.toString()).toFixed(2) : '0') + '%',
+        'Average': s.average_marks ? parseFloat(s.average_marks.toString()).toFixed(2) : '-',
         'Highest': s.highest_marks,
         'Lowest': s.lowest_marks
       }));
@@ -122,8 +123,8 @@ const HODDetailedAnalytics = () => {
             'USN': r.usn,
             'Name': r.name,
             'Section': r.section,
-            'SGPA': r.sgpa?.toFixed(2) || '-',
-            'Percentage': r.percentage?.toFixed(2) + '%' || '-',
+            'SGPA': r.sgpa ? parseFloat(r.sgpa.toString()).toFixed(2) : '-',
+            'Percentage': r.percentage ? parseFloat(r.percentage.toString()).toFixed(2) + '%' : '-',
             'Grade': r.class_grade || '-',
             'Backlogs': r.backlog_count || 0
           });
@@ -140,9 +141,9 @@ const HODDetailedAnalytics = () => {
       if (overallStats) {
         const overallData = [
           { 'Metric': 'Total Students', 'Value': overallStats.total_students },
-          { 'Metric': 'Average SGPA', 'Value': overallStats.average_sgpa?.toFixed(2) },
-          { 'Metric': 'Highest SGPA', 'Value': overallStats.highest_sgpa?.toFixed(2) },
-          { 'Metric': 'Lowest SGPA', 'Value': overallStats.lowest_sgpa?.toFixed(2) },
+          { 'Metric': 'Average SGPA', 'Value': overallStats.average_sgpa ? parseFloat(overallStats.average_sgpa.toString()).toFixed(2) : '-' },
+          { 'Metric': 'Highest SGPA', 'Value': overallStats.highest_sgpa ? parseFloat(overallStats.highest_sgpa.toString()).toFixed(2) : '-' },
+          { 'Metric': 'Lowest SGPA', 'Value': overallStats.lowest_sgpa ? parseFloat(overallStats.lowest_sgpa.toString()).toFixed(2) : '-' },
           { 'Metric': 'Students Passed', 'Value': overallStats.students_passed },
           { 'Metric': 'Students with Backlogs', 'Value': overallStats.students_with_backlogs },
           { 'Metric': 'Pass Percentage', 'Value': ((overallStats.students_passed / overallStats.total_students) * 100).toFixed(2) + '%' }
@@ -178,7 +179,16 @@ const HODDetailedAnalytics = () => {
     return acc;
   }, {} as Record<string, any>);
 
-  const studentList = Object.values(groupedByStudent);
+  // Filter students based on search query
+  const allStudents = Object.values(groupedByStudent);
+  const studentList = allStudents.filter((student: any) => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      student.usn.toLowerCase().includes(query) ||
+      student.name.toLowerCase().includes(query)
+    );
+  });
 
   // Note: groupedBySubject is prepared for future use
   // const subjectList = Object.values(groupedBySubject);
@@ -260,12 +270,16 @@ const HODDetailedAnalytics = () => {
                 
                 <div style={{ padding: '1rem', background: '#e8f5e9', borderRadius: '6px', border: '1px solid #81c784' }}>
                   <div style={{ fontSize: '0.75rem', color: '#388e3c', fontWeight: 500, marginBottom: '0.25rem' }}>Average SGPA</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#2e7d32' }}>{overallStats.average_sgpa?.toFixed(2)}</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#2e7d32' }}>
+                    {overallStats.average_sgpa ? parseFloat(overallStats.average_sgpa.toString()).toFixed(2) : '-'}
+                  </div>
                 </div>
                 
                 <div style={{ padding: '1rem', background: '#f3e5f5', borderRadius: '6px', border: '1px solid #ba68c8' }}>
                   <div style={{ fontSize: '0.75rem', color: '#7b1fa2', fontWeight: 500, marginBottom: '0.25rem' }}>Highest SGPA</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#6a1b9a' }}>{overallStats.highest_sgpa?.toFixed(2)}</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#6a1b9a' }}>
+                    {overallStats.highest_sgpa ? parseFloat(overallStats.highest_sgpa.toString()).toFixed(2) : '-'}
+                  </div>
                 </div>
                 
                 <div style={{ padding: '1rem', background: '#e8f5e9', borderRadius: '6px', border: '1px solid #81c784' }}>
@@ -290,13 +304,51 @@ const HODDetailedAnalytics = () => {
 
           {/* View Mode Toggle */}
           {results.length > 0 && (
-            <div style={{ background: 'white', padding: '1rem', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', marginBottom: '1.5rem', display: 'flex', gap: '1rem' }}>
-              <button onClick={() => setViewMode('subject')} style={{ padding: '0.5rem 1rem', background: viewMode === 'subject' ? '#1976d2' : '#e0e0e0', color: viewMode === 'subject' ? 'white' : '#616161', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 500, fontSize: '0.875rem' }}>
-                Subject-wise View
-              </button>
-              <button onClick={() => setViewMode('student')} style={{ padding: '0.5rem 1rem', background: viewMode === 'student' ? '#1976d2' : '#e0e0e0', color: viewMode === 'student' ? 'white' : '#616161', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 500, fontSize: '0.875rem' }}>
-                Student-wise View
-              </button>
+            <div style={{ background: 'white', padding: '1rem', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <button onClick={() => setViewMode('subject')} style={{ padding: '0.5rem 1rem', background: viewMode === 'subject' ? '#1976d2' : '#e0e0e0', color: viewMode === 'subject' ? 'white' : '#616161', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 500, fontSize: '0.875rem' }}>
+                  Subject-wise View
+                </button>
+                <button onClick={() => setViewMode('student')} style={{ padding: '0.5rem 1rem', background: viewMode === 'student' ? '#1976d2' : '#e0e0e0', color: viewMode === 'student' ? 'white' : '#616161', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 500, fontSize: '0.875rem' }}>
+                  Student-wise View
+                </button>
+                
+                {viewMode === 'student' && (
+                  <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <input 
+                      type="text" 
+                      placeholder="Search by USN or Name..." 
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      style={{ 
+                        padding: '0.5rem 1rem', 
+                        border: '1px solid #e0e0e0', 
+                        borderRadius: '4px', 
+                        fontSize: '0.875rem',
+                        width: '300px',
+                        outline: 'none'
+                      }}
+                    />
+                    {searchQuery && (
+                      <button 
+                        onClick={() => setSearchQuery('')}
+                        style={{ 
+                          padding: '0.5rem 0.75rem', 
+                          background: '#f44336', 
+                          color: 'white', 
+                          border: 'none', 
+                          borderRadius: '4px', 
+                          cursor: 'pointer', 
+                          fontSize: '0.75rem',
+                          fontWeight: 500
+                        }}
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -327,10 +379,12 @@ const HODDetailedAnalytics = () => {
                         <td style={{ padding: '0.75rem', color: '#4caf50', fontWeight: 600 }}>{s.passed_count}</td>
                         <td style={{ padding: '0.75rem' }}>
                           <span style={{ display: 'inline-block', padding: '0.25rem 0.5rem', borderRadius: '4px', background: s.pass_percentage >= 75 ? '#4caf50' : s.pass_percentage >= 50 ? '#ff9800' : '#f44336', color: 'white', fontWeight: 600, fontSize: '0.75rem' }}>
-                            {s.pass_percentage?.toFixed(1)}%
+                            {s.pass_percentage ? parseFloat(s.pass_percentage.toString()).toFixed(1) : '0'}%
                           </span>
                         </td>
-                        <td style={{ padding: '0.75rem', color: '#424242' }}>{s.average_marks?.toFixed(1)}</td>
+                        <td style={{ padding: '0.75rem', color: '#424242' }}>
+                          {s.average_marks ? parseFloat(s.average_marks.toString()).toFixed(1) : '-'}
+                        </td>
                         <td style={{ padding: '0.75rem', color: '#4caf50', fontWeight: 600 }}>{s.highest_marks}</td>
                         <td style={{ padding: '0.75rem', color: '#616161' }}>{s.lowest_marks}</td>
                       </tr>
@@ -344,7 +398,12 @@ const HODDetailedAnalytics = () => {
           {/* Student-wise Results */}
           {viewMode === 'student' && studentList.length > 0 && (
             <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-              <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem', fontWeight: 600, color: '#212121' }}>Student-wise Results</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: '#212121' }}>Student-wise Results</h3>
+                <div style={{ fontSize: '0.875rem', color: '#616161' }}>
+                  Showing {studentList.length} of {allStudents.length} students
+                </div>
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {studentList.map((student: any) => (
                   <div key={student.usn} style={{ padding: '1rem', border: '1px solid #e0e0e0', borderRadius: '6px', background: '#fafafa' }}>
@@ -354,9 +413,11 @@ const HODDetailedAnalytics = () => {
                         <div style={{ fontSize: '0.875rem', color: '#616161', fontFamily: 'monospace' }}>{student.usn} | Section: {student.section}</div>
                       </div>
                       <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '1.125rem', fontWeight: 700, color: '#4caf50' }}>SGPA: {student.sgpa?.toFixed(2)}</div>
+                        <div style={{ fontSize: '1.125rem', fontWeight: 700, color: '#4caf50' }}>
+                          SGPA: {student.sgpa ? parseFloat(student.sgpa.toString()).toFixed(2) : '-'}
+                        </div>
                         <div style={{ fontSize: '0.875rem', color: '#616161' }}>
-                          {student.percentage?.toFixed(1)}% | Grade: {student.class_grade} | Backlogs: {student.backlog_count || 0}
+                          {student.percentage ? parseFloat(student.percentage.toString()).toFixed(1) : '-'}% | Grade: {student.class_grade} | Backlogs: {student.backlog_count || 0}
                         </div>
                       </div>
                     </div>
@@ -398,6 +459,31 @@ const HODDetailedAnalytics = () => {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* No students found after search */}
+          {viewMode === 'student' && results.length > 0 && studentList.length === 0 && (
+            <div style={{ background: 'white', padding: '3rem', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', textAlign: 'center', color: '#757575' }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔍</div>
+              <div style={{ fontSize: '1.125rem', fontWeight: 500, marginBottom: '0.5rem' }}>No Students Found</div>
+              <div style={{ fontSize: '0.875rem' }}>No students match your search query "{searchQuery}"</div>
+              <button 
+                onClick={() => setSearchQuery('')}
+                style={{ 
+                  marginTop: '1rem',
+                  padding: '0.5rem 1rem', 
+                  background: '#1976d2', 
+                  color: 'white', 
+                  border: 'none', 
+                  borderRadius: '4px', 
+                  cursor: 'pointer', 
+                  fontWeight: 500,
+                  fontSize: '0.875rem'
+                }}
+              >
+                Clear Search
+              </button>
             </div>
           )}
 

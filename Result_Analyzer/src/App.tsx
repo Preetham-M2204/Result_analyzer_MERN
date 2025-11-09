@@ -12,7 +12,6 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import StudentDashboard from './pages/StudentDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
-import HODDashboard from './pages/HODDashboard';
 import HODDashboardEnhanced from './pages/HODDashboardEnhanced';
 import HODDetailedAnalytics from './pages/HODDetailedAnalytics';
 import AdminDashboard from './pages/AdminDashboard';
@@ -73,7 +72,7 @@ function App() {
             path="/hod/dashboard-legacy"
             element={
               <ProtectedRoute allowedRoles={['HOD']}>
-                <HODDashboard />
+                <HODDashboardEnhanced />
               </ProtectedRoute>
             }
           />

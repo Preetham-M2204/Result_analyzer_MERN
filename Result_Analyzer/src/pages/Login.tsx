@@ -4,7 +4,7 @@
  * Beautiful login page with college logo and form validation
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -36,23 +36,39 @@ const Login = () => {
    * If user is already logged in, redirect to appropriate dashboard
    * This runs after successful login
    */
-  if (user) {
-    // Redirect based on role
-    switch (user.role) {
-      case 'ADMIN':
-        navigate('/admin/dashboard');
-        break;
-      case 'HOD':
-        navigate('/hod/dashboard');
-        break;
-      case 'TEACHER':
-        navigate('/teacher/dashboard');
-        break;
-      case 'STUDENT':
-        navigate('/student/dashboard');
-        break;
+  useEffect(() => {
+    console.log('🔐 Login useEffect triggered');
+    console.log('   User:', user);
+    console.log('   User Role:', user?.role);
+    
+    if (user) {
+      console.log('👤 User exists, redirecting based on role:', user.role);
+      
+      // Redirect based on role
+      switch (user.role) {
+        case 'ADMIN':
+          console.log('➡️ Redirecting to /admin/dashboard');
+          navigate('/admin/dashboard');
+          break;
+        case 'HOD':
+          console.log('➡️ Redirecting to /hod/dashboard');
+          navigate('/hod/dashboard');
+          break;
+        case 'TEACHER':
+          console.log('➡️ Redirecting to /teacher/dashboard');
+          navigate('/teacher/dashboard');
+          break;
+        case 'STUDENT':
+          console.log('➡️ Redirecting to /student/dashboard');
+          navigate('/student/dashboard');
+          break;
+        default:
+          console.log('⚠️ Unknown role:', user.role);
+      }
+    } else {
+      console.log('👻 No user in Login useEffect');
     }
-  }
+  }, [user, navigate]);
   
   // ============================================================
   // FORM SUBMISSION HANDLER

@@ -24,8 +24,16 @@ interface ProtectedRouteProps {
 const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   const { user, loading } = useAuth();
 
+  console.log('🛡️ ProtectedRoute CHECK:');
+  console.log('   Loading:', loading);
+  console.log('   User:', user);
+  console.log('   User Role:', user?.role);
+  console.log('   Allowed Roles:', allowedRoles);
+  console.log('   Has Permission:', !allowedRoles || (user && allowedRoles.includes(user.role)));
+
   // Show loading state while checking authentication
   if (loading) {
+    console.log('⏳ ProtectedRoute: Still loading auth state...');
     return (
       <div style={{
         display: 'flex',
@@ -42,11 +50,13 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
 
   // Not logged in, redirect to login page
   if (!user) {
+    console.log('❌ ProtectedRoute: No user, redirecting to /login');
     return <Navigate to="/login" replace />;
   }
 
   // Check role-based access
   if (allowedRoles && !allowedRoles.includes(user.role)) {
+    console.log('🚫 ProtectedRoute: User role not allowed, redirecting to appropriate dashboard');
     // User doesn't have permission, redirect to their dashboard
     const dashboardMap: Record<UserRole, string> = {
       ADMIN: '/admin/dashboard',
@@ -59,6 +69,7 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   }
 
   // User is authenticated and has permission, render the component
+  console.log('✅ ProtectedRoute: Access granted, rendering children');
   return <>{children}</>;
 };
 

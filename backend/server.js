@@ -32,6 +32,7 @@ const studentRoutes = require('./src/routes/student');
 const adminRoutes = require('./src/routes/admin');
 const scraperRoutes = require('./src/routes/scraper');
 const teacherRoutes = require('./src/routes/teacher');
+const hodRoutes = require('./src/routes/hod');
 
 // ============================================================
 // INITIALIZE EXPRESS APP
@@ -187,6 +188,24 @@ app.use('/api/scraper', scraperRoutes);
  * - POST /api/teachers/add-section        → Add new section
  */
 app.use('/api/teachers', teacherRoutes);
+
+/**
+ * HOD Routes
+ * 
+ * Base URL: /api/hod
+ * All routes protected - require HOD role
+ * 
+ * Available endpoints:
+ * - GET  /api/hod/overview                    → Dashboard overview statistics
+ * - GET  /api/hod/top-performers/cgpa         → Top performers by CGPA
+ * - GET  /api/hod/top-performers/total-marks  → Top performers by total marks
+ * - GET  /api/hod/top-performers/semester-marks → Semester-specific toppers
+ * - GET  /api/hod/batch-statistics            → Batch-wise statistics
+ * - GET  /api/hod/subject-analytics           → Subject performance analytics
+ * - GET  /api/hod/section-comparison          → Section-wise comparison
+ * - POST /api/hod/export/excel                → Export data to Excel
+ */
+app.use('/api/hod', hodRoutes);
 
 /**
  * Health Check Endpoint

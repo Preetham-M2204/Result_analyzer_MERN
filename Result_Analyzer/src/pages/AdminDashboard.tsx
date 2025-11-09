@@ -12,6 +12,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
+import { useAuth } from '../context/AuthContext';
 import { 
   getAdminStats, 
   getAllUsers, 
@@ -31,7 +32,6 @@ import {
   stopScraper,
   retryFailedUSNs
 } from '../api/scraper';
-import { logout } from '../api/authApi';
 import { 
   getAllTeachers,
   getSubjectsByBatchSemester,
@@ -79,6 +79,7 @@ interface UserData {
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   
   // State management
   const [loading, setLoading] = useState(true);

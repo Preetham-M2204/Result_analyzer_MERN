@@ -6,6 +6,7 @@
 
 import { useAuth } from '../context/AuthContext';
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/apiClient';
 
 type TopPerformer = {
@@ -34,6 +35,7 @@ const HODDashboard = () => {
   console.log('========================================');
   
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [tab, setTab] = useState<'toppers' | 'statistics'>('toppers');
   const [cgpaToppers, setCgpaToppers] = useState<TopPerformer[]>([]);
   const [batchStats, setBatchStats] = useState<BatchStat[]>([]);
@@ -85,9 +87,17 @@ const HODDashboard = () => {
           <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600 }}>HOD Dashboard</h1>
           <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', opacity: 0.9 }}>Welcome, {user?.name || user?.email}</p>
         </div>
-        <button onClick={logout} style={{ padding: '0.5rem 1.25rem', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '6px', color: 'white', cursor: 'pointer', fontWeight: 500 }}>
-          Logout
-        </button>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <button onClick={() => navigate('/hod/dashboard-enhanced')} style={{ padding: '0.5rem 1.25rem', background: '#4caf50', border: 'none', borderRadius: '6px', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem' }}>
+            ⚡ Try Enhanced Dashboard
+          </button>
+          <button onClick={() => navigate('/hod/detailed-analytics')} style={{ padding: '0.5rem 1.25rem', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '6px', color: 'white', cursor: 'pointer', fontWeight: 500, fontSize: '0.875rem' }}>
+            📊 Detailed Analytics
+          </button>
+          <button onClick={logout} style={{ padding: '0.5rem 1.25rem', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '6px', color: 'white', cursor: 'pointer', fontWeight: 500 }}>
+            Logout
+          </button>
+        </div>
       </div>
 
       <div style={{ background: 'white', borderBottom: '1px solid #e0e0e0', padding: '0 2rem', display: 'flex', gap: '0.5rem' }}>

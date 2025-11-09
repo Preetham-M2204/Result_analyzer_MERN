@@ -499,41 +499,446 @@ const getSectionComparison = async (req, res) => {
 };
 
 // ============================================================
+// GET TOP PERFORMERS BY SGPA (SEMESTER-WISE)
+// ============================================================
+
+/**
+ * GET /api/hod/top-performers/sgpa
+ * 
+ * Returns top performers based on SGPA for a specific semester
+ * Query params: semester (required), batch (optional), section (optional), limit (default 10)
+ */
+const getTopPerformersBySGPA = async (req, res) => {
+  try {
+    const { semester, batch, section, limit = 10 } = req.query;
+    
+    console.log('\nHOD Controller -> getTopPerformersBySGPA');
+    console.log('Params:', { semester, batch, section, limit });
+    
+    if (!semester) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Semester parameter is required' 
+      });
+    }
+    
+    let whereConditions = ['ss.semester = ?'];
+    let params = [parseInt(semester)];
+    
+    if (batch && ACTIVE_BATCHES.includes(parseInt(batch))) {
+      whereConditions.push('s.batch = ?');
+      params.push(parseInt(batch));
+    } else {
+      whereConditions.push('s.batch IN (?, ?, ?)');
+      params.push(...ACTIVE_BATCHES);
+    }
+    
+    if (section) {
+      whereConditions.push('s.section = ?');
+      params.push(section);
+    }
+    
+    const whereClause = 'WHERE ' + whereConditions.join(' AND ');
+    
+    // Handle "all" as unlimited
+    const limitClause = limit === 'all' ? '' : `LIMIT ${parseInt(limit)}`;
+    
+    const toppers = await executeQuery(`
+      SELECT 
+        s.usn,
+        s.name,
+        s.batch,
+        s.section,
+        ss.semester,
+        ss.sgpa,
+        ss.total_marks_obtained,
+        ss.total_marks_maximum,
+        ss.percentage,
+        ss.class_grade,
+        ss.backlog_count
+      FROM student_semester_summary ss
+      JOIN student_details s ON ss.student_usn = s.usn
+      ${whereClause}
+      ORDER BY ss.sgpa DESC, ss.percentage DESC, s.name ASC
+      ${limitClause}
+    `, params);
+
+    console.log(`Found ${toppers.length} SGPA toppers for semester ${semester}`);
+
+    res.json({
+      success: true,
+      data: {
+        toppers,
+        criteriaType: 'SGPA',
+        semester: parseInt(semester),
+        batch: batch || 'ALL',
+        section: section || 'ALL',
+        limit: limit === 'all' ? 'ALL' : parseInt(limit)
+      }
+    });
+  } catch (error) {
+    console.error('Error in getTopPerformersBySGPA:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch SGPA toppers',
+      error: error.message 
+    });
+  }
+};
+
+// ============================================================
+// GET BACKLOG STATISTICS
+// ============================================================
+
+/**
+ * GET /api/hod/backlog-statistics
+ * 
+ * Returns backlog statistics across batches
+ */
+const getBacklogStatistics = async (req, res) => {
+  try {
+    console.log('\nHOD Controller -> getBacklogStatistics');
+    
+    const backlogStats = await executeQuery(`
+      SELECT 
+        s.batch,
+        COUNT(DISTINCT s.usn) as total_students,
+        COUNT(DISTINCT CASE WHEN ss.has_backlogs = TRUE THEN s.usn END) as students_with_backlogs,
+        SUM(ss.backlog_count) as total_backlogs,
+        AVG(CASE WHEN ss.has_backlogs = TRUE THEN ss.backlog_count END) as avg_backlogs_per_student,
+        MAX(ss.backlog_count) as max_backlogs
+      FROM student_details s
+      LEFT JOIN student_semester_summary ss ON s.usn = ss.student_usn
+      WHERE s.batch IN (?, ?, ?)
+      GROUP BY s.batch
+      ORDER BY s.batch DESC
+    `, ACTIVE_BATCHES);
+
+    console.log(`Fetched backlog statistics for ${backlogStats.length} batches`);
+
+    res.json({
+      success: true,
+      data: {
+        backlogStats,
+        activeBatches: ACTIVE_BATCHES
+      }
+    });
+  } catch (error) {
+    console.error('Error in getBacklogStatistics:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch backlog statistics',
+      error: error.message 
+    });
+  }
+};
+
+// ============================================================
+// GET SGPA DISTRIBUTION
+// ============================================================
+
+/**
+ * GET /api/hod/sgpa-distribution
+ * 
+ * Returns SGPA distribution data for visualization
+ * Query params: semester (optional), batch (optional)
+ */
+const getSGPADistribution = async (req, res) => {
+  try {
+    const { semester, batch } = req.query;
+    
+    console.log('\nHOD Controller -> getSGPADistribution');
+    console.log('Params:', { semester, batch });
+    
+    let whereConditions = ['s.batch IN (?, ?, ?)'];
+    let params = [...ACTIVE_BATCHES];
+    
+    if (batch && ACTIVE_BATCHES.includes(parseInt(batch))) {
+      whereConditions = ['s.batch = ?'];
+      params = [parseInt(batch)];
+    }
+    
+    if (semester) {
+      whereConditions.push('ss.semester = ?');
+      params.push(parseInt(semester));
+    }
+    
+    const whereClause = 'WHERE ' + whereConditions.join(' AND ');
+    
+    // Get distribution by SGPA ranges
+    const distribution = await executeQuery(`
+      SELECT 
+        CASE 
+          WHEN ss.sgpa >= 9.5 THEN '9.5-10.0'
+          WHEN ss.sgpa >= 9.0 THEN '9.0-9.5'
+          WHEN ss.sgpa >= 8.5 THEN '8.5-9.0'
+          WHEN ss.sgpa >= 8.0 THEN '8.0-8.5'
+          WHEN ss.sgpa >= 7.5 THEN '7.5-8.0'
+          WHEN ss.sgpa >= 7.0 THEN '7.0-7.5'
+          WHEN ss.sgpa >= 6.5 THEN '6.5-7.0'
+          WHEN ss.sgpa >= 6.0 THEN '6.0-6.5'
+          ELSE 'Below 6.0'
+        END as sgpa_range,
+        COUNT(*) as student_count,
+        s.batch
+      FROM student_semester_summary ss
+      JOIN student_details s ON ss.student_usn = s.usn
+      ${whereClause}
+      GROUP BY sgpa_range, s.batch
+      ORDER BY s.batch DESC, 
+        CASE sgpa_range
+          WHEN '9.5-10.0' THEN 1
+          WHEN '9.0-9.5' THEN 2
+          WHEN '8.5-9.0' THEN 3
+          WHEN '8.0-8.5' THEN 4
+          WHEN '7.5-8.0' THEN 5
+          WHEN '7.0-7.5' THEN 6
+          WHEN '6.5-7.0' THEN 7
+          WHEN '6.0-6.5' THEN 8
+          ELSE 9
+        END
+    `, params);
+
+    console.log(`Fetched SGPA distribution with ${distribution.length} ranges`);
+
+    res.json({
+      success: true,
+      data: {
+        distribution,
+        semester: semester || 'ALL',
+        batch: batch || 'ALL'
+      }
+    });
+  } catch (error) {
+    console.error('Error in getSGPADistribution:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch SGPA distribution',
+      error: error.message 
+    });
+  }
+};
+
+// ============================================================
+// GET BATCH PERFORMANCE COMPARISON
+// ============================================================
+
+/**
+ * GET /api/hod/batch-performance
+ * 
+ * Returns comprehensive batch comparison data for visualization
+ */
+const getBatchPerformance = async (req, res) => {
+  try {
+    console.log('\nHOD Controller -> getBatchPerformance');
+    
+    const performance = await executeQuery(`
+      SELECT 
+        s.batch,
+        COUNT(DISTINCT s.usn) as total_students,
+        AVG(s.cgpa) as average_cgpa,
+        AVG(ss.sgpa) as average_sgpa,
+        MAX(s.cgpa) as highest_cgpa,
+        MIN(s.cgpa) as lowest_cgpa,
+        SUM(CASE WHEN s.cgpa >= 9.0 THEN 1 ELSE 0 END) as distinction_count,
+        SUM(CASE WHEN ss.has_backlogs = TRUE THEN 1 ELSE 0 END) as students_with_backlogs,
+        SUM(ss.backlog_count) as total_backlogs
+      FROM student_details s
+      LEFT JOIN student_semester_summary ss ON s.usn = ss.student_usn
+      WHERE s.batch IN (?, ?, ?)
+      GROUP BY s.batch
+      ORDER BY s.batch DESC
+    `, ACTIVE_BATCHES);
+
+    console.log(`Fetched performance for ${performance.length} batches`);
+
+    res.json({
+      success: true,
+      data: {
+        performance,
+        activeBatches: ACTIVE_BATCHES
+      }
+    });
+  } catch (error) {
+    console.error('Error in getBatchPerformance:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch batch performance',
+      error: error.message 
+    });
+  }
+};
+
+// ============================================================
+// GET DETAILED SEMESTER RESULTS
+// ============================================================
+
+/**
+ * GET /api/hod/detailed-results
+ * 
+ * Returns complete results for a batch and semester with all subject details
+ * Query params: batch (required), semester (required), section (optional)
+ */
+const getDetailedResults = async (req, res) => {
+  try {
+    const { batch, semester, section } = req.query;
+    
+    console.log('\nHOD Controller -> getDetailedResults');
+    console.log('Params:', { batch, semester, section });
+    
+    if (!batch || !semester) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Both batch and semester parameters are required' 
+      });
+    }
+    
+    let whereConditions = ['s.batch = ?', 'r.semester = ?'];
+    let params = [parseInt(batch), parseInt(semester)];
+    
+    if (section) {
+      whereConditions.push('s.section = ?');
+      params.push(section);
+    }
+    
+    const whereClause = 'WHERE ' + whereConditions.join(' AND ');
+    
+    // Get student-wise results with all subject details
+    const results = await executeQuery(`
+      SELECT 
+        s.usn,
+        s.name,
+        s.section,
+        sub.subject_code,
+        sub.subject_name,
+        r.internal_marks,
+        r.external_marks,
+        r.total_marks,
+        r.letter_grade,
+        r.grade_points,
+        r.result_status,
+        ss.sgpa,
+        ss.percentage,
+        ss.class_grade,
+        ss.backlog_count
+      FROM results r
+      JOIN student_details s ON r.student_usn = s.usn
+      JOIN subjects sub ON r.subject_code = sub.subject_code
+      LEFT JOIN student_semester_summary ss ON s.usn = ss.student_usn AND ss.semester = r.semester
+      ${whereClause}
+      ORDER BY s.section, s.usn, sub.subject_code
+    `, params);
+    
+    // Get subject-wise pass percentage
+    const subjectStats = await executeQuery(`
+      SELECT 
+        sub.subject_code,
+        sub.subject_name,
+        COUNT(*) as total_students,
+        SUM(CASE WHEN r.result_status = 'PASS' THEN 1 ELSE 0 END) as passed_count,
+        ROUND((SUM(CASE WHEN r.result_status = 'PASS' THEN 1 ELSE 0 END) / COUNT(*)) * 100, 2) as pass_percentage,
+        AVG(r.total_marks) as average_marks,
+        MAX(r.total_marks) as highest_marks,
+        MIN(r.total_marks) as lowest_marks
+      FROM results r
+      JOIN student_details s ON r.student_usn = s.usn
+      JOIN subjects sub ON r.subject_code = sub.subject_code
+      ${whereClause}
+      GROUP BY sub.subject_code, sub.subject_name
+      ORDER BY sub.subject_code
+    `, params);
+    
+    // Get overall semester statistics
+    const overallStats = await executeQuery(`
+      SELECT 
+        COUNT(DISTINCT s.usn) as total_students,
+        AVG(ss.sgpa) as average_sgpa,
+        MAX(ss.sgpa) as highest_sgpa,
+        MIN(ss.sgpa) as lowest_sgpa,
+        SUM(CASE WHEN ss.backlog_count = 0 THEN 1 ELSE 0 END) as students_passed,
+        SUM(CASE WHEN ss.backlog_count > 0 THEN 1 ELSE 0 END) as students_with_backlogs
+      FROM student_semester_summary ss
+      JOIN student_details s ON ss.student_usn = s.usn
+      WHERE s.batch = ? AND ss.semester = ?
+      ${section ? 'AND s.section = ?' : ''}
+    `, section ? [parseInt(batch), parseInt(semester), section] : [parseInt(batch), parseInt(semester)]);
+
+    console.log(`Fetched detailed results: ${results.length} records, ${subjectStats.length} subjects`);
+
+    res.json({
+      success: true,
+      data: {
+        results,
+        subjectStats,
+        overallStats: overallStats[0] || {},
+        batch: parseInt(batch),
+        semester: parseInt(semester),
+        section: section || 'ALL'
+      }
+    });
+  } catch (error) {
+    console.error('Error in getDetailedResults:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch detailed results',
+      error: error.message 
+    });
+  }
+};
+
+// ============================================================
 // EXPORT TO EXCEL
 // ============================================================
 
 /**
- * POST /api/hod/export/excel
+ * GET /api/hod/export/excel
  * 
- * Exports top performers data to Excel file
+ * Exports data to Excel format (simple JSON structure for frontend conversion)
+ * Query params: type (toppers/batch-stats/detailed-results), other params based on type
  */
 const exportToExcel = async (req, res) => {
   try {
-    const { criteriaType, batch, semester, limit = 10 } = req.body;
+    const { type, criteriaType, batch, semester, section, limit } = req.query;
     
     console.log('\nHOD Controller -> exportToExcel');
-    console.log('Params:', { criteriaType, batch, semester, limit });
-    
-    // This is a placeholder - actual Excel generation requires exceljs package
-    // For now, return JSON data that can be converted to Excel on frontend
+    console.log('Params:', { type, criteriaType, batch, semester, section, limit });
     
     let data = [];
+    let headers = [];
+    let filename = 'export';
     
-    if (criteriaType === 'CGPA') {
-      const result = await getTopPerformersByCGPA({ query: { batch, limit } }, { json: () => {} });
-      data = result;
-    } else if (criteriaType === 'TOTAL_MARKS') {
-      const result = await getTopPerformersByTotalMarks({ query: { batch, limit } }, { json: () => {} });
-      data = result;
-    } else if (criteriaType === 'SEMESTER_MARKS' && semester) {
-      const result = await getTopPerformersBySemesterMarks({ query: { semester, batch, limit } }, { json: () => {} });
-      data = result;
+    if (type === 'toppers') {
+      // Export toppers data
+      let toppers = [];
+      
+      if (criteriaType === 'CGPA') {
+        const response = await getTopPerformersByCGPA({ query: { batch, limit: limit || 100 } }, { json: (d) => d });
+        toppers = response?.data?.toppers || [];
+        headers = ['USN', 'Name', 'Batch', 'Section', 'CGPA', 'Total Backlogs'];
+        data = toppers.map(t => [t.usn, t.name, t.batch, t.section, t.cgpa, t.total_backlogs || 0]);
+        filename = `CGPA_Toppers_${batch || 'All'}_${new Date().toISOString().split('T')[0]}`;
+      } else if (criteriaType === 'SGPA' && semester) {
+        const response = await getTopPerformersBySGPA({ query: { semester, batch, section, limit: limit || 100 } }, { json: (d) => d });
+        toppers = response?.data?.toppers || [];
+        headers = ['USN', 'Name', 'Batch', 'Section', 'Semester', 'SGPA', 'Percentage', 'Grade', 'Backlogs'];
+        data = toppers.map(t => [t.usn, t.name, t.batch, t.section, t.semester, t.sgpa, t.percentage, t.class_grade, t.backlog_count]);
+        filename = `SGPA_Toppers_Sem${semester}_${batch || 'All'}_${new Date().toISOString().split('T')[0]}`;
+      }
+    } else if (type === 'batch-stats') {
+      const response = await getBatchStatistics({ query: {} }, { json: (d) => d });
+      const stats = response?.data?.batchStats || [];
+      headers = ['Batch', 'Total Students', 'Sections', 'Avg CGPA', 'Highest CGPA', 'Lowest CGPA', 'Distinction', 'First Class'];
+      data = stats.map(s => [s.batch, s.total_students, s.total_sections, s.average_cgpa, s.highest_cgpa, s.lowest_cgpa, s.distinction_count, s.first_class_count]);
+      filename = `Batch_Statistics_${new Date().toISOString().split('T')[0]}`;
     }
     
     res.json({
       success: true,
-      message: 'Excel export data prepared',
-      data: data
+      data: {
+        headers,
+        rows: data,
+        filename
+      }
     });
   } catch (error) {
     console.error('Error in exportToExcel:', error);
@@ -554,8 +959,13 @@ module.exports = {
   getTopPerformersByCGPA,
   getTopPerformersByTotalMarks,
   getTopPerformersBySemesterMarks,
+  getTopPerformersBySGPA,
   getBatchStatistics,
   getSubjectAnalytics,
   getSectionComparison,
+  getBacklogStatistics,
+  getSGPADistribution,
+  getBatchPerformance,
+  getDetailedResults,
   exportToExcel
 };

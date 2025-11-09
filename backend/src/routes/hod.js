@@ -59,12 +59,52 @@ router.get('/top-performers/total-marks', hodController.getTopPerformersByTotalM
 router.get('/top-performers/semester-marks', hodController.getTopPerformersBySemesterMarks);
 
 /**
+ * GET /api/hod/top-performers/sgpa
+ * 
+ * Get top performers for specific semester based on SGPA
+ * Query params: semester (required), batch (optional), section (optional), limit (default 10, can be 'all')
+ */
+router.get('/top-performers/sgpa', hodController.getTopPerformersBySGPA);
+
+/**
  * GET /api/hod/batch-statistics
  * 
  * Get comprehensive batch-wise statistics
  * Returns: total students, sections, CGPA distribution, class counts
  */
 router.get('/batch-statistics', hodController.getBatchStatistics);
+
+/**
+ * GET /api/hod/backlog-statistics
+ * 
+ * Get backlog statistics across batches
+ * Returns: students with backlogs, total backlogs, averages
+ */
+router.get('/backlog-statistics', hodController.getBacklogStatistics);
+
+/**
+ * GET /api/hod/sgpa-distribution
+ * 
+ * Get SGPA distribution for visualization
+ * Query params: semester (optional), batch (optional)
+ */
+router.get('/sgpa-distribution', hodController.getSGPADistribution);
+
+/**
+ * GET /api/hod/batch-performance
+ * 
+ * Get comprehensive batch performance comparison
+ * Returns: averages, toppers, backlogs by batch
+ */
+router.get('/batch-performance', hodController.getBatchPerformance);
+
+/**
+ * GET /api/hod/detailed-results
+ * 
+ * Get detailed semester results with all subject information
+ * Query params: batch (required), semester (required), section (optional)
+ */
+router.get('/detailed-results', hodController.getDetailedResults);
 
 /**
  * GET /api/hod/subject-analytics
@@ -83,11 +123,11 @@ router.get('/subject-analytics', hodController.getSubjectAnalytics);
 router.get('/section-comparison', hodController.getSectionComparison);
 
 /**
- * POST /api/hod/export/excel
+ * GET /api/hod/export/excel
  * 
- * Export top performers data to Excel file
- * Body: { criteriaType, batch, semester, limit }
+ * Export data to Excel format
+ * Query params: type (toppers/batch-stats/detailed-results), criteriaType, batch, semester, section, limit
  */
-router.post('/export/excel', hodController.exportToExcel);
+router.get('/export/excel', hodController.exportToExcel);
 
 module.exports = router;

@@ -13,6 +13,8 @@ import Login from './pages/Login';
 import StudentDashboard from './pages/StudentDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
 import HODDashboard from './pages/HODDashboard';
+import HODDashboardEnhanced from './pages/HODDashboardEnhanced';
+import HODDetailedAnalytics from './pages/HODDetailedAnalytics';
 import AdminDashboard from './pages/AdminDashboard';
 
 import './App.css';
@@ -46,8 +48,29 @@ function App() {
           />
 
           {/* Protected Routes - HOD */}
+          {/* Main HOD Dashboard - Enhanced Version with all features */}
           <Route
             path="/hod/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['HOD']}>
+                <HODDashboardEnhanced />
+              </ProtectedRoute>
+            }
+          />
+          
+          {/* HOD Detailed Analytics - Semester-wise detailed results */}
+          <Route
+            path="/hod/detailed-analytics"
+            element={
+              <ProtectedRoute allowedRoles={['HOD']}>
+                <HODDetailedAnalytics />
+              </ProtectedRoute>
+            }
+          />
+          
+          {/* Legacy HOD Dashboard (kept for reference) */}
+          <Route
+            path="/hod/dashboard-legacy"
             element={
               <ProtectedRoute allowedRoles={['HOD']}>
                 <HODDashboard />

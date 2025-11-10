@@ -6,9 +6,9 @@ No logic changes - just a clean API interface
 Auto-calculates SGPA/CGPA after scraping completes
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, ValidationError
 from typing import List
 import subprocess
 import json
@@ -32,6 +32,7 @@ app.add_middleware(
 SCRIPTS_DIR = os.path.join(os.path.dirname(__file__), '..', 'scripts')
 ULTIMATE_SCRAPER = os.path.join(SCRIPTS_DIR, 'ultimate_scraper.py')
 AUTONOMOUS_SCRAPER = os.path.join(SCRIPTS_DIR, 'AUTONOMOUS_scrapper.py')
+RV_SCRAPER = os.path.join(SCRIPTS_DIR, 'Rv_ScrapperVTU.py')
 GRADE_CALCULATOR = os.path.join(SCRIPTS_DIR, 'calculate_grades.py')
 
 # Import grade calculation function
@@ -53,6 +54,14 @@ class VTUScrapeRequest(BaseModel):
 class AutonomousScrapeRequest(BaseModel):
     url: str
     students: List[dict]  # [{"usn": "1BI22IS001", "dob": "2004-05-15"}, ...]
+    workers: int = 20
+
+class RVScrapeRequest(BaseModel):
+    model_config = ConfigDict(extra='ignore')
+    
+    url: str
+    semester: int
+    usns: List[str]
     workers: int = 20
     
 class ScrapeResponse(BaseModel):
@@ -237,6 +246,111 @@ async def scrape_autonomous_results(request: AutonomousScrapeRequest):
             logs=[str(e)]
         )
 
+@app.post("/scrape/rv", response_model=ScrapeResponse)
+async def scrape_rv_results(request: Request):
+    """
+    Call Rv_ScrapperVTU.py with given parameters
+    For revaluation results - updates existing records, doesn't create new attempts
+    """
+    # Debug: Log raw request body
+    raw_body = await request.json()
+    print(f"🔍 RAW REQUEST BODY: {json.dumps(raw_body, indent=2)}")
+    
+    # Validate and parse
+    try:
+        validated_request = RVScrapeRequest(**raw_body)
+    except ValidationError as e:
+        print(f"❌ VALIDATION ERROR: {e}")
+        raise HTTPException(status_code=422, detail=str(e))
+    
+    start_time = time.time()
+    
+    print(f"RV SCRAPER STARTED - {len(validated_request.usns)} students - {validated_request.workers} workers")
+    print(f"RV SCRAPER - Request received: url={validated_request.url}, semester={validated_request.semester}, usns_count={len(validated_request.usns)}")
+    
+    # Prepare command
+    usns_csv = ','.join(validated_request.usns)
+    
+    cmd = [
+        'python',
+        RV_SCRAPER,
+        '--url', validated_request.url,
+        '--workers', str(validated_request.workers),
+        '--usns', usns_csv
+    ]
+    
+    try:
+        # Run the scraper
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            cwd=SCRIPTS_DIR,
+            encoding='utf-8',
+            errors='replace'
+        )
+        
+        # Parse output
+        output_lines = result.stdout.split('\n')
+        logs = [line for line in output_lines if line.strip()]
+        
+        # Count success/failed from logs
+        # Rv_ScrapperVTU.py prints:
+        # - "OK {usn}" at the end when successful
+        # - "FAIL {usn}" at the end when failed
+        succeeded = []
+        failed = []
+        
+        for line in logs:
+            # Check for final success/fail markers (exactly "OK {usn}" or "FAIL {usn}")
+            parts = line.split()
+            if len(parts) == 2:
+                if parts[0] == 'OK' and parts[1] in validated_request.usns:
+                    succeeded.append(parts[1])
+                elif parts[0] == 'FAIL' and parts[1] in validated_request.usns:
+                    failed.append(parts[1])
+        
+        time_taken = time.time() - start_time
+        
+        print(f"RV SCRAPER COMPLETED - Success: {len(succeeded)} - Failed: {len(failed)} - Time: {time_taken:.2f}s")
+        
+        # Auto-calculate SGPA/CGPA after successful RV scraping
+        # RV updates marks, so grades need recalculation
+        if len(succeeded) > 0 and calculate_grades_for_semester:
+            try:
+                print(f"Calculating SGPA/CGPA for Semester {validated_request.semester}...")
+                grade_result = calculate_grades_for_semester(validated_request.semester, verbose=False)
+                if grade_result['success']:
+                    print(f"Grade calculation completed successfully")
+                else:
+                    print(f"Grade calculation failed: {grade_result.get('error', 'Unknown error')}")
+            except Exception as e:
+                print(f"Grade calculation error (non-fatal): {str(e)}")
+        
+        return ScrapeResponse(
+            success=True,
+            total=len(validated_request.usns),
+            succeeded=len(succeeded),
+            failed=len(failed),
+            failed_usns=failed,
+            time_taken=time_taken,
+            message=f"RV scraping completed. {len(succeeded)} succeeded, {len(failed)} failed.",
+            logs=logs[-50:]  # Last 50 log lines
+        )
+        
+    except Exception as e:
+        print(f"RV SCRAPER ERROR: {str(e)}")
+        return ScrapeResponse(
+            success=False,
+            total=len(validated_request.usns),
+            succeeded=0,
+            failed=len(validated_request.usns),
+            failed_usns=validated_request.usns,
+            time_taken=time.time() - start_time,
+            message=f"RV scraper failed: {str(e)}",
+            logs=[str(e)]
+        )
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
@@ -244,7 +358,8 @@ async def health_check():
         "status": "healthy",
         "service": "VTU Scraper Wrapper",
         "ultimate_scraper": os.path.exists(ULTIMATE_SCRAPER),
-        "autonomous_scraper": os.path.exists(AUTONOMOUS_SCRAPER)
+        "autonomous_scraper": os.path.exists(AUTONOMOUS_SCRAPER),
+        "rv_scraper": os.path.exists(RV_SCRAPER)
     }
 
 if __name__ == "__main__":

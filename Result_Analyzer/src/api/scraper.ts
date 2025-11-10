@@ -49,6 +49,24 @@ export const startAutonomousScraper = async (scraperData: {
 };
 
 /**
+ * Start RV (Revaluation) Scraper
+ */
+export const startRVScraper = async (scraperData: {
+  url: string;
+  mode: 'single' | 'batch';
+  usn?: string;
+  batch?: string;
+  section?: string;
+  semester: number;
+  workers?: number;
+}) => {
+  const response = await axios.post(`${API_BASE}/rv/start`, scraperData, {
+    headers: getAuthHeader()
+  });
+  return response.data;
+};
+
+/**
  * Get Scraper Progress
  */
 export const getScraperProgress = async (sessionId: string) => {

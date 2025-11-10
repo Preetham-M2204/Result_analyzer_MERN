@@ -28,6 +28,7 @@ import {
 import { 
   startVTUScraper,
   startAutonomousScraper,
+  startRVScraper,
   getScraperProgress,
   stopScraper,
   retryFailedUSNs
@@ -90,7 +91,7 @@ const AdminDashboard: React.FC = () => {
   const [activeView, setActiveView] = useState<'overview' | 'users' | 'scraper' | 'students' | 'subjects' | 'teachers'>('overview');
   
   // Scraper state
-  const [scraperType, setScraperType] = useState<'vtu' | 'autonomous'>('vtu');
+  const [scraperType, setScraperType] = useState<'vtu' | 'autonomous' | 'rv'>('vtu');
   const [scrapingMode, setScrapingMode] = useState<'single' | 'batch'>('single');
   const [vtuUrl, setVtuUrl] = useState('');
   const [autonomousUrl, setAutonomousUrl] = useState('https://ioncudos.in/bit_online_results/');
@@ -696,6 +697,48 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleStartRVScraper = async () => {
+    try {
+      if (!vtuUrl.trim()) {
+        alert('❌ Please enter RV results URL');
+        return;
+      }
+      if (!semester.trim()) {
+        alert('❌ Please enter semester number');
+        return;
+      }
+      if (!singleUsn.trim()) {
+        alert('❌ Please enter USN (single mode) or upload Excel file (import mode)');
+        return;
+      }
+
+      const scraperData: any = {
+        url: vtuUrl.trim(),
+        semester: parseInt(semester),
+        mode: 'single', // Always use single mode for RV (we send USN list)
+        workers: parseInt(workers) || 20
+      };
+
+      // For both single and batch (Excel import), we send USN list
+      // In single mode: one USN
+      // In batch mode: comma-separated USNs from Excel
+      scraperData.usn = singleUsn.trim().toUpperCase();
+
+      setIsScraping(true);
+      const response = await startRVScraper(scraperData);
+      
+      if (response.success) {
+        setScraperSessionId(response.sessionId);
+        const usnCount = singleUsn.split(',').length;
+        alert(`✅ RV Scraper started!\nSession ID: ${response.sessionId}\nTotal USNs: ${usnCount}`);
+      }
+    } catch (error: any) {
+      console.error('RV scraper error:', error);
+      alert(error.response?.data?.message || 'Failed to start RV scraper');
+      setIsScraping(false);
+    }
+  };
+
   const handleStopScraper = async () => {
     try {
       if (!scraperSessionId) {
@@ -1054,6 +1097,12 @@ const AdminDashboard: React.FC = () => {
             >
               🏫 Autonomous Results
             </button>
+            <button 
+              className={`type-btn ${scraperType === 'rv' ? 'active' : ''}`}
+              onClick={() => setScraperType('rv')}
+            >
+              📝 RV (Revaluation) Results
+            </button>
           </div>
 
           {/* VTU Scraper Form */}
@@ -1252,6 +1301,156 @@ const AdminDashboard: React.FC = () => {
                     <li>🔐 DOB must exist in student_details table</li>
                     <li>🌐 Uses Selenium for browser automation</li>
                     <li>⏱️ Slower than VTU scraper (headless browser required)</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* RV Scraper Form */}
+          {scraperType === 'rv' && (
+            <div className="scraper-card">
+              <h3>📝 RV (Revaluation) Results Scraper</h3>
+              <p>Scrapes revaluation results - Only a few students apply for RV, so import USN list via Excel</p>
+              
+              <div className="scraper-form">
+                <label>🔗 RV Results URL (Required):</label>
+                <input 
+                  type="text" 
+                  value={vtuUrl}
+                  onChange={(e) => setVtuUrl(e.target.value)}
+                  placeholder="https://results.vtu.ac.in/..." 
+                  className="scraper-input"
+                />
+
+                <label>📚 Semester Number:</label>
+                <input 
+                  type="number" 
+                  value={semester}
+                  onChange={(e) => setSemester(e.target.value)}
+                  placeholder="e.g., 4" 
+                  min="1"
+                  max="8"
+                  className="scraper-input" 
+                />
+                
+                <label>📋 Scraping Mode:</label>
+                <div className="mode-selector">
+                  <button 
+                    className={`mode-btn ${scrapingMode === 'single' ? 'active' : ''}`}
+                    onClick={() => setScrapingMode('single')}
+                  >
+                    Single USN
+                  </button>
+                  <button 
+                    className={`mode-btn ${scrapingMode === 'batch' ? 'active' : ''}`}
+                    onClick={() => setScrapingMode('batch')}
+                  >
+                    📄 Import Excel
+                  </button>
+                </div>
+
+                {scrapingMode === 'single' && (
+                  <>
+                    <label>🎯 Enter USN:</label>
+                    <input 
+                      type="text" 
+                      value={singleUsn}
+                      onChange={(e) => setSingleUsn(e.target.value)}
+                      placeholder="e.g., 1BI23IS001" 
+                      className="scraper-input" 
+                    />
+                  </>
+                )}
+
+                {scrapingMode === 'batch' && (
+                  <>
+                    <label>� Upload Excel File with USN List:</label>
+                    <input 
+                      type="file"
+                      accept=".xlsx,.xls"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (evt) => {
+                            try {
+                              const workbook = XLSX.read(evt.target?.result, { type: 'binary' });
+                              const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                              const data: any[] = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+                              
+                              // Extract USNs from first column (skip header if exists)
+                              const usns: string[] = [];
+                              data.forEach((row: any[], index) => {
+                                if (index === 0 && typeof row[0] === 'string' && row[0].toLowerCase().includes('usn')) {
+                                  return; // Skip header row
+                                }
+                                if (row[0] && typeof row[0] === 'string') {
+                                  const usn = row[0].toString().trim().toUpperCase();
+                                  if (usn.length > 0) {
+                                    usns.push(usn);
+                                  }
+                                }
+                              });
+                              
+                              if (usns.length === 0) {
+                                alert('❌ No USNs found in Excel file. Make sure USNs are in the first column.');
+                                return;
+                              }
+                              
+                              // Store USNs in state (we'll use singleUsn to store the list)
+                              setSingleUsn(usns.join(','));
+                              alert(`✅ Loaded ${usns.length} USNs from Excel file:\n${usns.slice(0, 5).join(', ')}${usns.length > 5 ? '...' : ''}`);
+                            } catch (error) {
+                              console.error('Excel parsing error:', error);
+                              alert('❌ Failed to parse Excel file. Make sure it\'s a valid .xlsx or .xls file.');
+                            }
+                          };
+                          reader.readAsBinaryString(file);
+                        }
+                      }}
+                      className="scraper-input"
+                      style={{ padding: '8px' }}
+                    />
+                    <small style={{ color: '#666', display: 'block', marginTop: '4px' }}>
+                      📋 Excel format: First column should contain USNs (e.g., 1BI23IS001, 1BI23IS002...)
+                    </small>
+                    {singleUsn && scrapingMode === 'batch' && (
+                      <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#e3f2fd', borderRadius: '4px' }}>
+                        <strong>📊 Loaded USNs:</strong> {singleUsn.split(',').length} students
+                      </div>
+                    )}
+                  </>
+                )}
+                
+                <label>⚙️ Number of Workers (threads):</label>
+                <input 
+                  type="number" 
+                  value={workers}
+                  onChange={(e) => setWorkers(e.target.value)}
+                  placeholder="20" 
+                  min="1"
+                  max="50"
+                  className="scraper-input" 
+                />
+                
+                <button 
+                  className="scraper-btn" 
+                  onClick={handleStartRVScraper}
+                  disabled={isScraping || !vtuUrl || !semester || !singleUsn}
+                >
+                  {isScraping ? 'Scraping...' : 'Start RV Scraper'}
+                </button>
+
+                <div className="info-box" style={{ marginTop: '16px', backgroundColor: '#e8f5e9', borderLeft: '4px solid #4caf50' }}>
+                  <p><strong>⚠️ RV Scraper - Excel Import Mode:</strong></p>
+                  <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
+                    <li><strong>Why Excel?</strong> Only a few students (5-15) apply for RV, not the entire batch</li>
+                    <li><strong>Excel format:</strong> First column = USNs (e.g., 1BI23IS001, 1BI23IS002...)</li>
+                    <li><strong>Updates records:</strong> Does NOT create new attempts</li>
+                    <li><strong>Revaluation:</strong> Same attempt_number, updates external marks</li>
+                    <li><strong>Auto-recalculation:</strong> Clears grades → calculate_grades.py reassigns</li>
+                    <li>📊 Auto-calculates SGPA/CGPA after completion</li>
                   </ul>
                 </div>
               </div>

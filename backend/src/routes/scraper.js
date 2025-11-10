@@ -18,6 +18,9 @@ router.post('/vtu/start', scraperController.startVTUScraper);
 // Start Autonomous scraper
 router.post('/autonomous/start', scraperController.startAutonomousScraper);
 
+// Start RV (Revaluation) scraper
+router.post('/rv/start', scraperController.startRVScraper);
+
 // Retry failed USNs from a session
 router.post('/retry/:sessionId', scraperController.retryFailedUSNs);
 

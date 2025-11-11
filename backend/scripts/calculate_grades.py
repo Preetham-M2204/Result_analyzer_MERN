@@ -113,9 +113,11 @@ def get_subject_max_marks(subject_code, semester, cursor):
     Determine maximum marks for a subject (usually 100, some are 200)
     
     Strategy:
-    1. Check if subject has 'PROJECT' or 'INTERNSHIP' in name → 200 marks
-    2. Check semester 8 major project subjects → 200 marks
+    1. Check for actual major project/internship subjects → 200 marks
+    2. Semester 8 major project → 200 marks
     3. Default → 100 marks
+    
+    Note: "Mini Project" and subjects with "Project Management" in name are 100 marks
     
     Args:
         subject_code: Subject code (e.g., 'BCS801')
@@ -137,15 +139,16 @@ def get_subject_max_marks(subject_code, semester, cursor):
     
     subject_name = result[0].upper()
     
-    # Check for project/internship subjects (usually 200 marks)
-    if any(keyword in subject_name for keyword in ['PROJECT', 'INTERNSHIP', 'DISSERTATION']):
+    # Check for actual major projects/internships (200 marks)
+    # Be specific to avoid matching "Project Management" or "Mini Project"
+    if any(keyword in subject_name for keyword in ['MAJOR PROJECT', 'INTERNSHIP', 'DISSERTATION']):
         return 200
     
     # Semester 8 major subjects are often 200 marks
     if semester == 8 and 'MAJOR' in subject_name:
         return 200
     
-    return 100  # Default for regular subjects
+    return 100  # Default for regular subjects (including Mini Project, Project Management, etc.)
 
 
 # =============================================================================

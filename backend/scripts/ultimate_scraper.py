@@ -44,7 +44,9 @@ import threading
 import re
 
 # ==================== CONFIGURATION ====================
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+# Use environment variable if set (for Docker), otherwise use Windows default
+tesseract_path = os.environ.get('TESSERACT_CMD', r'C:\Program Files\Tesseract-OCR\tesseract.exe')
+pytesseract.pytesseract.tesseract_cmd = tesseract_path
 
 if not sys.warnoptions:
     warnings.simplefilter("ignore")

@@ -1,0 +1,136 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql-db:
+    image: mysql:8.0
+    container_name: result_analyzer_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/database_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    networks:
+      - result_analyzer_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: result_analyzer_mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - result_analyzer_network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Python Scraper Service
+  python-scraper:
+    build:
+      context: .
+      dockerfile: scraper.Dockerfile
+    container_name: result_analyzer_scraper
+    restart: unless-stopped
+    environment:
+      MYSQL_HOST: mysql-db
+      MYSQL_PORT: 3306
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      TESSERACT_CMD: /usr/bin/tesseract
+    ports:
+      - "8001:8001"
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+    networks:
+      - result_analyzer_network
+
+  # Backend Node.js API
+  backend:
+    build:
+      context: .
+      dockerfile: backend.Dockerfile
+    container_name: result_analyzer_backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      
+      # MySQL Config
+      MYSQL_HOST: mysql-db
+      MYSQL_PORT: 3306
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      
+      # MongoDB Config
+      MONGODB_URI: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongodb:27017/
+      
+      # JWT Config
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRE: ${JWT_EXPIRE}
+      
+      # Scraper Service
+      SCRAPER_SERVICE_URL: http://python-scraper:8001
+      
+    ports:
+      - "5000:5000"
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      python-scraper:
+        condition: service_started
+    networks:
+      - result_analyzer_network
+
+  # Frontend React Application
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend.Dockerfile
+    container_name: result_analyzer_frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: http://localhost:5000
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - result_analyzer_network
+
+# Persistent volumes
+volumes:
+  mysql_data:
+    name: result_analyzer_mysql_data
+  mongodb_data:
+    name: result_analyzer_mongodb_data
+
+# Network
+networks:
+  result_analyzer_network:
+    name: result_analyzer_network
+    driver: bridge

@@ -62,7 +62,11 @@ const PORT = process.env.PORT || 3000;
 app.use(cors({
   origin: [
     'http://localhost:5173',
-    'http://localhost:5174'
+    'http://localhost:5174',
+    'http://localhost',
+    'http://localhost:80',
+    'http://result_analyzer_frontend',
+    'http://result_analyzer_frontend:80'
   ],
   credentials: true, // Allow cookies and Authorization headers
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],

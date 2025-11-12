@@ -1,45 +1,9 @@
 version: '3.8'
 
 services:
-  # MySQL Database
-  # mysql-db:
-  #   image: mysql:8.0
-  #   container_name: result_analyzer_mysql
-  #   restart: unless-stopped
-  #   environment:
-  #     MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-  #     MYSQL_DATABASE: ${MYSQL_DATABASE}
-  #     MYSQL_USER: ${MYSQL_USER}
-  #     MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-  #   ports:
-  #     - "3306:3306"
-  #   volumes:
-  #     - mysql_data:/var/lib/mysql
-  #     - ./backend/database_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
-  #   networks:
-  #     - result_analyzer_network
-  #   healthcheck:
-  #     test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
-
-  # MongoDB Database
-  # mongodb:
-  #   image: mongo:7.0
-  #   container_name: result_analyzer_mongodb
-  #   restart: unless-stopped
-  #   ports:
-  #     - "27017:27017"
-  #   volumes:
-  #     - mongodb_data:/data/db
-  #   networks:
-  #     - result_analyzer_network
-  #   healthcheck:
-  #     test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
+  # NOTE: MySQL & MongoDB run on localhost (not in Docker)
+  # Make sure your local MySQL is running on port 3306
+  # Make sure your local MongoDB is running on port 27017
 
   # Python Scraper Service
   python-scraper:
@@ -49,7 +13,7 @@ services:
     container_name: result_analyzer_scraper
     restart: unless-stopped
     environment:
-      MYSQL_HOST: localhost
+      MYSQL_HOST: host.docker.internal
       MYSQL_PORT: 3306
       MYSQL_USER: root
       MYSQL_PASSWORD: Preetham@123@
@@ -57,6 +21,8 @@ services:
       TESSERACT_CMD: /usr/bin/tesseract
     ports:
       - "8001:8001"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - result_analyzer_network
 
@@ -70,17 +36,19 @@ services:
     environment:
       NODE_ENV: production
       PORT: 5000
-      MYSQL_HOST: localhost
+      MYSQL_HOST: host.docker.internal
       MYSQL_PORT: 3306
       MYSQL_USER: root
       MYSQL_PASSWORD: Preetham@123@
       MYSQL_DATABASE: resana
-      MONGODB_URI: mongodb://localhost:27017/
+      MONGODB_URI: mongodb://host.docker.internal:27017/vtu_auth
       JWT_SECRET: vtu_results_secret_key_change_in_production_2025
       JWT_EXPIRE: 24h
       SCRAPER_SERVICE_URL: http://python-scraper:8001
     ports:
       - "5000:5000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - result_analyzer_network
 

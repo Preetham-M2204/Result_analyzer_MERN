@@ -376,12 +376,30 @@ exports.getSubjectAnalysis = async (req, res) => {
     }
 
     // Overall statistics
+    // Pass criteria: 
+    // - Internal-only subjects (NSS, PE, Yoga with external=0): total >= 40
+    // - Regular subjects: external >= 18 AND total >= 40
     const [overallStats] = await mysqlPool.execute(`
       SELECT 
         COUNT(DISTINCT s.usn) as total_students,
-        SUM(CASE WHEN r.result_status != 'FAIL' THEN 1 ELSE 0 END) as passed_count,
-        SUM(CASE WHEN r.result_status = 'FAIL' THEN 1 ELSE 0 END) as failed_count,
-        ROUND((SUM(CASE WHEN r.result_status != 'FAIL' THEN 1 ELSE 0 END) / COUNT(*)) * 100, 2) as pass_percentage,
+        SUM(CASE 
+          WHEN r.external_marks = 0 THEN 
+            CASE WHEN r.total_marks >= 40 THEN 1 ELSE 0 END
+          ELSE 
+            CASE WHEN r.external_marks >= 18 AND r.total_marks >= 40 THEN 1 ELSE 0 END
+        END) as passed_count,
+        SUM(CASE 
+          WHEN r.external_marks = 0 THEN 
+            CASE WHEN r.total_marks < 40 THEN 1 ELSE 0 END
+          ELSE 
+            CASE WHEN r.external_marks < 18 OR r.total_marks < 40 THEN 1 ELSE 0 END
+        END) as failed_count,
+        ROUND((SUM(CASE 
+          WHEN r.external_marks = 0 THEN 
+            CASE WHEN r.total_marks >= 40 THEN 1 ELSE 0 END
+          ELSE 
+            CASE WHEN r.external_marks >= 18 AND r.total_marks >= 40 THEN 1 ELSE 0 END
+        END) / COUNT(*)) * 100, 2) as pass_percentage,
         AVG(r.total_marks) as average_marks,
         MAX(r.total_marks) as highest_marks,
         MIN(r.total_marks) as lowest_marks,
@@ -389,6 +407,7 @@ exports.getSubjectAnalysis = async (req, res) => {
         AVG(r.external_marks) as avg_external
       FROM results r
       JOIN student_details s ON r.student_usn = s.usn
+      JOIN subjects sub ON r.subject_code = sub.subject_code
       ${whereClause}
     `, params);
 

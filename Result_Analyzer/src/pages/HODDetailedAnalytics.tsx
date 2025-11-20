@@ -66,10 +66,34 @@ const HODDetailedAnalytics = () => {
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'student' | 'subject'>('subject');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [showSubjectModal, setShowSubjectModal] = useState(false);
+  const [selectedSubject, setSelectedSubject] = useState<any>(null);
+  const [subjectStudents, setSubjectStudents] = useState<any[]>([]);
   
   const batches = [2022, 2023, 2024];
   const sections = ['A', 'B', 'C', 'D'];
   const semesters = [1, 2, 3, 4, 5, 6, 7, 8];
+
+  const handleSubjectClick = async (subjectCode: string, subjectName: string) => {
+    try {
+      const params = new URLSearchParams({
+        subjectCode,
+        batch: selectedBatch,
+        semester: selectedSemester
+      });
+      
+      if (selectedSection !== 'all') {
+        params.append('section', selectedSection);
+      }
+      
+      const resp = await apiClient.get(`/api/hod/subject-student-results?${params.toString()}`);
+      setSelectedSubject({ code: subjectCode, name: subjectName, ...resp.data.data });
+      setSubjectStudents(resp.data.data.students || []);
+      setShowSubjectModal(true);
+    } catch (err: any) {
+      alert('Failed to load subject details: ' + (err?.response?.data?.message || err.message));
+    }
+  };
 
   const fetchDetailedResults = async () => {
     try {
@@ -157,6 +181,104 @@ const HODDetailedAnalytics = () => {
       alert('Excel file downloaded successfully!');
     } catch (err: any) {
       console.error('Export failed:', err);
+      alert('Failed to export: ' + err.message);
+    }
+  };
+
+  const exportSubjectWise = (subjectCode: string, subjectName: string) => {
+    try {
+      const subjectResults = results.filter(r => r.subject_code === subjectCode);
+      const data = subjectResults.map(r => ({
+        'USN': r.usn,
+        'Name': r.name,
+        'Section': r.section,
+        'Internal': r.internal_marks,
+        'External': r.external_marks,
+        'Total': r.total_marks,
+        'Grade': r.letter_grade,
+        'Status': r.result_status
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, subjectCode);
+      
+      const filename = `${subjectCode}_${subjectName.replace(/[^a-zA-Z0-9]/g, '_')}_Batch${selectedBatch}_Sem${selectedSemester}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(wb, filename);
+      alert('Subject-wise results exported!');
+    } catch (err: any) {
+      alert('Failed to export: ' + err.message);
+    }
+  };
+
+  const exportOverallSemester = () => {
+    try {
+      // Group by student and pivot subjects
+      const studentMap = new Map<string, any>();
+      
+      results.forEach(r => {
+        if (!studentMap.has(r.usn)) {
+          studentMap.set(r.usn, {
+            'USN': r.usn,
+            'Name': r.name,
+            'Section': r.section
+          });
+        }
+        const student = studentMap.get(r.usn);
+        const prefix = r.subject_code;
+        student[`${prefix}_Internal`] = r.internal_marks;
+        student[`${prefix}_External`] = r.external_marks;
+        student[`${prefix}_Total`] = r.total_marks;
+        student[`${prefix}_Grade`] = r.letter_grade;
+        
+        // Add overall stats (same for all subjects of a student) - will be reordered later
+        if (!student['_sgpa']) {
+          student['_sgpa'] = r.sgpa ? parseFloat(r.sgpa.toString()).toFixed(2) : '-';
+          student['_percentage'] = r.percentage ? parseFloat(r.percentage.toString()).toFixed(2) : '-';
+          student['_class_grade'] = r.class_grade || '-';
+          student['_backlogs'] = r.backlog_count || 0;
+        }
+      });
+
+      // Reorder columns: USN, Name, Section, all subject columns (sorted), then summary columns
+      const data = Array.from(studentMap.values()).map(student => {
+        const reordered: any = {
+          'USN': student.USN,
+          'Name': student.Name,
+          'Section': student.Section
+        };
+        
+        // Get all subject-related keys and sort them to ensure consistent ordering
+        const subjectKeys = Object.keys(student)
+          .filter(key => key !== 'USN' && key !== 'Name' && key !== 'Section' && !key.startsWith('_'))
+          .sort();
+        
+        // Add subject columns in sorted order
+        let totalMarksObtained = 0;
+        subjectKeys.forEach(key => {
+          reordered[key] = student[key];
+          if (key.endsWith('_Total')) {
+            totalMarksObtained += student[key] || 0;
+          }
+        });
+        
+        // Add summary columns at the end
+        reordered['Total_Marks_Obtained'] = totalMarksObtained;
+        reordered['SGPA'] = student._sgpa;
+        reordered['Class_Grade'] = student._class_grade;
+        reordered['Backlogs'] = student._backlogs;
+        
+        return reordered;
+      });
+
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Overall Semester Results');
+      
+      const filename = `Overall_Semester_Results_Batch${selectedBatch}_Sem${selectedSemester}_${selectedSection !== 'all' ? 'Sec' + selectedSection : 'All'}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(wb, filename);
+      alert('Overall semester results exported!');
+    } catch (err: any) {
       alert('Failed to export: ' + err.message);
     }
   };
@@ -257,9 +379,14 @@ const HODDetailedAnalytics = () => {
                   Overall Statistics - Batch {selectedBatch}, Semester {selectedSemester}
                   {selectedSection !== 'all' && `, Section ${selectedSection}`}
                 </h3>
-                <button onClick={exportToExcel} style={{ padding: '0.5rem 1rem', background: '#4caf50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 500, fontSize: '0.875rem' }}>
-                  Export to Excel
-                </button>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button onClick={exportToExcel} style={{ padding: '0.5rem 1rem', background: '#4caf50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 500, fontSize: '0.875rem' }}>
+                    Export Statistics
+                  </button>
+                  <button onClick={exportOverallSemester} style={{ padding: '0.5rem 1rem', background: '#2196f3', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 500, fontSize: '0.875rem' }}>
+                    Export Overall Semester
+                  </button>
+                </div>
               </div>
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
@@ -368,25 +495,90 @@ const HODDetailedAnalytics = () => {
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Avg</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Highest</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Lowest</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {subjectStats.map(s => (
-                      <tr key={s.subject_code} style={{ borderBottom: '1px solid #eeeeee' }}>
-                        <td style={{ padding: '0.75rem', color: '#424242', fontFamily: 'monospace', fontWeight: 600 }}>{s.subject_code}</td>
-                        <td style={{ padding: '0.75rem', color: '#212121' }}>{s.subject_name}</td>
-                        <td style={{ padding: '0.75rem', color: '#616161' }}>{s.total_students}</td>
-                        <td style={{ padding: '0.75rem', color: '#4caf50', fontWeight: 600 }}>{s.passed_count}</td>
-                        <td style={{ padding: '0.75rem' }}>
+                      <tr 
+                        key={s.subject_code} 
+                        style={{ 
+                          borderBottom: '1px solid #eeeeee', 
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <td 
+                          style={{ padding: '0.75rem', color: '#424242', fontFamily: 'monospace', fontWeight: 600, cursor: 'pointer' }}
+                          onClick={() => handleSubjectClick(s.subject_code, s.subject_name)}
+                        >
+                          {s.subject_code}
+                        </td>
+                        <td 
+                          style={{ padding: '0.75rem', color: '#212121', cursor: 'pointer' }}
+                          onClick={() => handleSubjectClick(s.subject_code, s.subject_name)}
+                        >
+                          {s.subject_name}
+                        </td>
+                        <td 
+                          style={{ padding: '0.75rem', color: '#616161', cursor: 'pointer' }}
+                          onClick={() => handleSubjectClick(s.subject_code, s.subject_name)}
+                        >
+                          {s.total_students}
+                        </td>
+                        <td 
+                          style={{ padding: '0.75rem', color: '#4caf50', fontWeight: 600, cursor: 'pointer' }}
+                          onClick={() => handleSubjectClick(s.subject_code, s.subject_name)}
+                        >
+                          {s.passed_count}
+                        </td>
+                        <td 
+                          style={{ padding: '0.75rem', cursor: 'pointer' }}
+                          onClick={() => handleSubjectClick(s.subject_code, s.subject_name)}
+                        >
                           <span style={{ display: 'inline-block', padding: '0.25rem 0.5rem', borderRadius: '4px', background: s.pass_percentage >= 75 ? '#4caf50' : s.pass_percentage >= 50 ? '#ff9800' : '#f44336', color: 'white', fontWeight: 600, fontSize: '0.75rem' }}>
                             {s.pass_percentage ? parseFloat(s.pass_percentage.toString()).toFixed(1) : '0'}%
                           </span>
                         </td>
-                        <td style={{ padding: '0.75rem', color: '#424242' }}>
+                        <td 
+                          style={{ padding: '0.75rem', color: '#424242', cursor: 'pointer' }}
+                          onClick={() => handleSubjectClick(s.subject_code, s.subject_name)}
+                        >
                           {s.average_marks ? parseFloat(s.average_marks.toString()).toFixed(1) : '-'}
                         </td>
-                        <td style={{ padding: '0.75rem', color: '#4caf50', fontWeight: 600 }}>{s.highest_marks}</td>
-                        <td style={{ padding: '0.75rem', color: '#616161' }}>{s.lowest_marks}</td>
+                        <td 
+                          style={{ padding: '0.75rem', color: '#4caf50', fontWeight: 600, cursor: 'pointer' }}
+                          onClick={() => handleSubjectClick(s.subject_code, s.subject_name)}
+                        >
+                          {s.highest_marks}
+                        </td>
+                        <td 
+                          style={{ padding: '0.75rem', color: '#616161', cursor: 'pointer' }}
+                          onClick={() => handleSubjectClick(s.subject_code, s.subject_name)}
+                        >
+                          {s.lowest_marks}
+                        </td>
+                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              exportSubjectWise(s.subject_code, s.subject_name);
+                            }}
+                            style={{ 
+                              padding: '0.375rem 0.75rem', 
+                              background: '#ff9800', 
+                              color: 'white', 
+                              border: 'none', 
+                              borderRadius: '4px', 
+                              cursor: 'pointer', 
+                              fontWeight: 500, 
+                              fontSize: '0.75rem' 
+                            }}
+                          >
+                            Export
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -447,8 +639,8 @@ const HODDetailedAnalytics = () => {
                                 </span>
                               </td>
                               <td style={{ padding: '0.5rem', textAlign: 'center' }}>
-                                <span style={{ display: 'inline-block', padding: '0.25rem 0.5rem', borderRadius: '4px', background: sub.result_status === 'PASS' ? '#4caf50' : '#f44336', color: 'white', fontWeight: 600 }}>
-                                  {sub.result_status}
+                                <span style={{ display: 'inline-block', padding: '0.25rem 0.5rem', borderRadius: '4px', background: (sub.result_status === 'PASS' || sub.result_status === 'P') ? '#4caf50' : '#f44336', color: 'white', fontWeight: 600 }}>
+                                  {sub.result_status === 'P' ? 'PASS' : sub.result_status === 'F' ? 'FAIL' : sub.result_status}
                                 </span>
                               </td>
                             </tr>
@@ -493,6 +685,91 @@ const HODDetailedAnalytics = () => {
               <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📊</div>
               <div style={{ fontSize: '1.125rem', fontWeight: 500, marginBottom: '0.5rem' }}>No Results Available</div>
               <div style={{ fontSize: '0.875rem' }}>Select a batch and semester above, then click "Fetch Results" to view detailed analytics</div>
+            </div>
+          )}
+
+          {/* Subject Detail Modal */}
+          {showSubjectModal && selectedSubject && (
+            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }} onClick={() => setShowSubjectModal(false)}>
+              <div style={{ background: 'white', borderRadius: '8px', maxWidth: '1200px', width: '100%', maxHeight: '90vh', overflow: 'auto' }} onClick={(e) => e.stopPropagation()}>
+                <div style={{ padding: '1.5rem', borderBottom: '1px solid #e0e0e0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: 'white', zIndex: 1 }}>
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: '#212121' }}>{selectedSubject.name}</h2>
+                    <div style={{ fontSize: '0.875rem', color: '#616161', marginTop: '0.25rem' }}>{selectedSubject.code}</div>
+                  </div>
+                  <button onClick={() => setShowSubjectModal(false)} style={{ padding: '0.5rem 1rem', background: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 500 }}>Close</button>
+                </div>
+                
+                <div style={{ padding: '1.5rem' }}>
+                  {/* Statistics Cards */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+                    <div style={{ background: '#e3f2fd', padding: '1rem', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#1976d2', fontWeight: 500, marginBottom: '0.25rem' }}>Total Students</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1565c0' }}>{selectedSubject.statistics?.totalStudents || 0}</div>
+                    </div>
+                    <div style={{ background: '#e8f5e9', padding: '1rem', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#388e3c', fontWeight: 500, marginBottom: '0.25rem' }}>Passed</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#2e7d32' }}>{selectedSubject.statistics?.passedStudents || 0}</div>
+                    </div>
+                    <div style={{ background: '#ffebee', padding: '1rem', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#d32f2f', fontWeight: 500, marginBottom: '0.25rem' }}>Failed</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#c62828' }}>{selectedSubject.statistics?.failedStudents || 0}</div>
+                    </div>
+                    <div style={{ background: '#fff3e0', padding: '1rem', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#f57c00', fontWeight: 500, marginBottom: '0.25rem' }}>Pass %</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ef6c00' }}>{selectedSubject.statistics?.passPercentage || 0}%</div>
+                    </div>
+                    <div style={{ background: '#f3e5f5', padding: '1rem', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#7b1fa2', fontWeight: 500, marginBottom: '0.25rem' }}>Average</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#6a1b9a' }}>{selectedSubject.statistics?.avgMarks || 0}</div>
+                    </div>
+                    <div style={{ background: '#e0f2f1', padding: '1rem', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#00796b', fontWeight: 500, marginBottom: '0.25rem' }}>Highest</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#00695c' }}>{selectedSubject.statistics?.highestMarks || 0}</div>
+                    </div>
+                  </div>
+
+                  {/* Student Results Table */}
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                      <thead style={{ background: '#f5f5f5', position: 'sticky', top: 0 }}>
+                        <tr>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>USN</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Name</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Section</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Internal</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>External</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Total</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Grade</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {subjectStudents.map((student: any) => (
+                          <tr key={student.usn} style={{ borderBottom: '1px solid #eeeeee' }}>
+                            <td style={{ padding: '0.75rem', fontFamily: 'monospace', fontWeight: 600, color: '#424242' }}>{student.usn}</td>
+                            <td style={{ padding: '0.75rem', color: '#212121' }}>{student.name}</td>
+                            <td style={{ padding: '0.75rem', textAlign: 'center', color: '#616161' }}>{student.section}</td>
+                            <td style={{ padding: '0.75rem', textAlign: 'center', color: '#616161' }}>{student.internal_marks}</td>
+                            <td style={{ padding: '0.75rem', textAlign: 'center', color: '#616161' }}>{student.external_marks}</td>
+                            <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: (student.external_marks >= 18 && student.total_marks >= 40) ? '#4caf50' : '#f44336' }}>{student.total_marks}</td>
+                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                              <span style={{ display: 'inline-block', padding: '0.25rem 0.5rem', borderRadius: '4px', background: '#e3f2fd', color: '#1976d2', fontWeight: 600, fontSize: '0.75rem' }}>
+                                {student.letter_grade || '-'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                              <span style={{ display: 'inline-block', padding: '0.25rem 0.5rem', borderRadius: '4px', background: student.pass_status === 'PASS' ? '#4caf50' : '#f44336', color: 'white', fontWeight: 600, fontSize: '0.75rem' }}>
+                                {student.pass_status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
           

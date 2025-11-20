@@ -1091,12 +1091,12 @@ const AdminDashboard: React.FC = () => {
             >
               🎓 VTU Results
             </button>
-            <button 
+            {/* <button 
               className={`type-btn ${scraperType === 'autonomous' ? 'active' : ''}`}
               onClick={() => setScraperType('autonomous')}
             >
               🏫 Autonomous Results
-            </button>
+            </button> */}
             <button 
               className={`type-btn ${scraperType === 'rv' ? 'active' : ''}`}
               onClick={() => setScraperType('rv')}
@@ -1211,8 +1211,8 @@ const AdminDashboard: React.FC = () => {
             </div>
           )}
 
-          {/* Autonomous Scraper Form */}
-          {scraperType === 'autonomous' && (
+          {/* Autonomous Scraper Form - COMMENTED OUT */}
+          {/* {scraperType === 'autonomous' && (
             <div className="scraper-card">
               <h3>🏫 Autonomous College Results Scraper</h3>
               <p>Scrapes from ioncudos.in - Requires USN + DOB from database</p>
@@ -1305,7 +1305,7 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
             </div>
-          )}
+          )} */}
 
           {/* RV Scraper Form */}
           {scraperType === 'rv' && (

@@ -5,13 +5,19 @@ Handles MySQL connection for VTU Results Scraper
 
 import mysql.connector
 from mysql.connector import Error
+import os
+from dotenv import load_dotenv
 
-# Database Configuration
+# Load environment variables from .env file
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '..', '.env'))
+
+# Database Configuration - Use Cloud Database (Clever Cloud)
 DB_CONFIG = {
-    'host': 'localhost',
-    'user': 'root',
-    'password': '123456',
-    'database': 'resana'
+    'host': os.getenv('MYSQL_HOST', 'localhost'),
+    'user': os.getenv('MYSQL_USER', 'root'),
+    'password': os.getenv('MYSQL_PASSWORD', '123456'),
+    'database': os.getenv('MYSQL_DATABASE', 'resana'),
+    'port': int(os.getenv('MYSQL_PORT', 3306))
 }
 
 def get_db_connection():

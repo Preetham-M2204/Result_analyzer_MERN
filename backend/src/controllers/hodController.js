@@ -842,13 +842,26 @@ const getDetailedResults = async (req, res) => {
     `, params);
     
     // Get subject-wise pass percentage (LATEST ATTEMPT ONLY)
+    // Pass criteria: 
+    // - Internal-only subjects (NSS, PE, Yoga with external=0): total_marks >= 40
+    // - Regular subjects: external_marks >= 18 AND total_marks >= 40
     const subjectStats = await executeQuery(`
       SELECT 
         sub.subject_code,
         sub.subject_name,
         COUNT(*) as total_students,
-        SUM(CASE WHEN r.result_status != 'FAIL' THEN 1 ELSE 0 END) as passed_count,
-        ROUND((SUM(CASE WHEN r.result_status != 'FAIL' THEN 1 ELSE 0 END) / COUNT(*)) * 100, 2) as pass_percentage,
+        SUM(CASE 
+          WHEN r.external_marks = 0 THEN 
+            CASE WHEN r.total_marks >= 40 THEN 1 ELSE 0 END
+          ELSE 
+            CASE WHEN r.external_marks >= 18 AND r.total_marks >= 40 THEN 1 ELSE 0 END
+        END) as passed_count,
+        ROUND((SUM(CASE 
+          WHEN r.external_marks = 0 THEN 
+            CASE WHEN r.total_marks >= 40 THEN 1 ELSE 0 END
+          ELSE 
+            CASE WHEN r.external_marks >= 18 AND r.total_marks >= 40 THEN 1 ELSE 0 END
+        END) / COUNT(*)) * 100, 2) as pass_percentage,
         AVG(r.total_marks) as average_marks,
         MAX(r.total_marks) as highest_marks,
         MIN(r.total_marks) as lowest_marks
@@ -868,7 +881,10 @@ const getDetailedResults = async (req, res) => {
       ORDER BY sub.subject_code
     `, params);
     
-    // Get overall semester statistics - Calculate pass/fail from actual results
+    // Get overall semester statistics - Calculate pass/fail based on VTU criteria
+    // Internal-only subjects (NSS, PE, Yoga): only check total >= 40
+    // Regular subjects: check external >= 18 AND total >= 40
+    // CRITICAL: Must check LATEST ATTEMPT only for each subject
     const overallStats = await executeQuery(`
       SELECT 
         COUNT(DISTINCT s.usn) as total_students,
@@ -878,17 +894,39 @@ const getDetailedResults = async (req, res) => {
         COUNT(DISTINCT CASE 
           WHEN NOT EXISTS (
             SELECT 1 FROM results r2 
+            INNER JOIN (
+              SELECT student_usn, subject_code, semester, MAX(attempt_number) as max_attempt
+              FROM results
+              GROUP BY student_usn, subject_code, semester
+            ) latest2 ON r2.student_usn = latest2.student_usn 
+                       AND r2.subject_code = latest2.subject_code 
+                       AND r2.semester = latest2.semester
+                       AND r2.attempt_number = latest2.max_attempt
             WHERE r2.student_usn = s.usn 
             AND r2.semester = ? 
-            AND r2.result_status = 'FAIL'
+            AND (
+              (r2.external_marks = 0 AND r2.total_marks < 40) OR
+              (r2.external_marks > 0 AND (r2.external_marks < 18 OR r2.total_marks < 40))
+            )
           ) THEN s.usn 
         END) as students_passed,
         COUNT(DISTINCT CASE 
           WHEN EXISTS (
             SELECT 1 FROM results r2 
+            INNER JOIN (
+              SELECT student_usn, subject_code, semester, MAX(attempt_number) as max_attempt
+              FROM results
+              GROUP BY student_usn, subject_code, semester
+            ) latest2 ON r2.student_usn = latest2.student_usn 
+                       AND r2.subject_code = latest2.subject_code 
+                       AND r2.semester = latest2.semester
+                       AND r2.attempt_number = latest2.max_attempt
             WHERE r2.student_usn = s.usn 
             AND r2.semester = ? 
-            AND r2.result_status = 'FAIL'
+            AND (
+              (r2.external_marks = 0 AND r2.total_marks < 40) OR
+              (r2.external_marks > 0 AND (r2.external_marks < 18 OR r2.total_marks < 40))
+            )
           ) THEN s.usn 
         END) as students_with_backlogs
       FROM student_details s
@@ -991,6 +1029,130 @@ const exportToExcel = async (req, res) => {
 // EXPORT CONTROLLER FUNCTIONS
 // ============================================================
 
+/**
+ * GET SUBJECT STUDENT RESULTS
+ * Get all students' results for a specific subject
+ * Shows who passed/failed, marks distribution, etc.
+ */
+const getSubjectStudentResults = async (req, res) => {
+  try {
+    const { subjectCode, batch, semester, section } = req.query;
+    
+    console.log('\nHOD Controller -> getSubjectStudentResults');
+    console.log('Params:', { subjectCode, batch, semester, section });
+    
+    if (!subjectCode || !batch || !semester) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Subject code, batch, and semester are required' 
+      });
+    }
+    
+    let whereConditions = [
+      's.batch = ?', 
+      'r.semester = ?',
+      'r.subject_code = ?'
+    ];
+    let params = [parseInt(batch), parseInt(semester), subjectCode];
+    
+    if (section) {
+      whereConditions.push('s.section = ?');
+      params.push(section);
+    }
+    
+    const whereClause = 'WHERE ' + whereConditions.join(' AND ');
+    
+    // Get all students' results for this subject (LATEST ATTEMPT ONLY)
+    const studentResults = await executeQuery(`
+      SELECT 
+        s.usn,
+        s.name,
+        s.section,
+        r.internal_marks,
+        r.external_marks,
+        r.total_marks,
+        r.letter_grade,
+        r.grade_points,
+        r.result_status,
+        r.attempt_number,
+        CASE 
+          WHEN r.external_marks = 0 THEN 
+            CASE WHEN r.total_marks >= 40 THEN 'PASS' ELSE 'FAIL' END
+          ELSE 
+            CASE WHEN r.external_marks >= 18 AND r.total_marks >= 40 THEN 'PASS' ELSE 'FAIL' END
+        END as pass_status
+      FROM results r
+      JOIN student_details s ON r.student_usn = s.usn
+      JOIN subjects sub ON r.subject_code = sub.subject_code
+      INNER JOIN (
+        SELECT student_usn, subject_code, semester, MAX(attempt_number) as max_attempt
+        FROM results
+        GROUP BY student_usn, subject_code, semester
+      ) latest ON r.student_usn = latest.student_usn 
+                 AND r.subject_code = latest.subject_code 
+                 AND r.semester = latest.semester
+                 AND r.attempt_number = latest.max_attempt
+      ${whereClause}
+      ORDER BY r.total_marks DESC, s.usn
+    `, params);
+    
+    // Get subject info
+    const [subjectInfo] = await executeQuery(`
+      SELECT subject_code, subject_name, credits
+      FROM subjects
+      WHERE subject_code = ?
+    `, [subjectCode]);
+    
+    // Calculate statistics
+    const totalStudents = studentResults.length;
+    const passedStudents = studentResults.filter(s => s.external_marks >= 18 && s.total_marks >= 40).length;
+    const failedStudents = totalStudents - passedStudents;
+    const passPercentage = totalStudents > 0 ? ((passedStudents / totalStudents) * 100).toFixed(2) : 0;
+    
+    const avgMarks = totalStudents > 0 
+      ? (studentResults.reduce((sum, s) => sum + s.total_marks, 0) / totalStudents).toFixed(2)
+      : 0;
+    
+    const avgInternal = totalStudents > 0
+      ? (studentResults.reduce((sum, s) => sum + s.internal_marks, 0) / totalStudents).toFixed(2)
+      : 0;
+    
+    const avgExternal = totalStudents > 0
+      ? (studentResults.reduce((sum, s) => sum + s.external_marks, 0) / totalStudents).toFixed(2)
+      : 0;
+    
+    const highestMarks = Math.max(...studentResults.map(s => s.total_marks), 0);
+    const lowestMarks = Math.min(...studentResults.map(s => s.total_marks), 100);
+    
+    res.json({
+      success: true,
+      data: {
+        subject: subjectInfo,
+        statistics: {
+          totalStudents,
+          passedStudents,
+          failedStudents,
+          passPercentage,
+          avgMarks,
+          avgInternal,
+          avgExternal,
+          highestMarks,
+          lowestMarks
+        },
+        students: studentResults
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error in getSubjectStudentResults:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch subject student results',
+      error: error.message 
+    });
+  }
+};
+
 module.exports = {
   getOverview,
   getTopPerformersByCGPA,
@@ -1004,5 +1166,6 @@ module.exports = {
   getSGPADistribution,
   getBatchPerformance,
   getDetailedResults,
+  getSubjectStudentResults,
   exportToExcel
 };

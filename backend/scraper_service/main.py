@@ -281,6 +281,7 @@ async def scrape_rv_results(request: Request):
     
     try:
         # Run the scraper
+        print(f"CMD Executing command: {' '.join(cmd)}")
         result = subprocess.run(
             cmd,
             capture_output=True,
@@ -292,40 +293,119 @@ async def scrape_rv_results(request: Request):
         
         # Parse output
         output_lines = result.stdout.split('\n')
+        error_lines = result.stderr.split('\n')
         logs = [line for line in output_lines if line.strip()]
         
+        # Print ALL output for debugging
+        print(f"\n{'='*60}")
+        print(f"RV SCRAPER STDOUT ({len(logs)} lines):")
+        print(f"{'='*60}")
+        for line in logs[-100:]:  # Last 100 lines
+            print(line)
+        print(f"{'='*60}\n")
+        
+        if error_lines and any(line.strip() for line in error_lines):
+            print(f"\n{'='*60}")
+            print(f"RV SCRAPER STDERR:")
+            print(f"{'='*60}")
+            for line in error_lines:
+                if line.strip():
+                    print(line)
+            print(f"{'='*60}\n")
+        
         # Count success/failed from logs
-        # Rv_ScrapperVTU.py prints:
-        # - "OK {usn}" at the end when successful
-        # - "FAIL {usn}" at the end when failed
+        # Rv_ScrapperVTU.py prints various formats:
+        # - "OK {usn} - RV results scraped"
+        # - "OK {usn}"
+        # - "FAIL {usn} - Failed after 5 attempts"
+        # - "FAIL {usn}"
         succeeded = []
         failed = []
         
         for line in logs:
-            # Check for final success/fail markers (exactly "OK {usn}" or "FAIL {usn}")
-            parts = line.split()
-            if len(parts) == 2:
-                if parts[0] == 'OK' and parts[1] in validated_request.usns:
-                    succeeded.append(parts[1])
-                elif parts[0] == 'FAIL' and parts[1] in validated_request.usns:
-                    failed.append(parts[1])
+            # Check if line starts with OK or FAIL
+            if line.startswith('OK '):
+                # Extract USN (second word before any dash/hyphen)
+                parts = line.split()
+                if len(parts) >= 2:
+                    usn_candidate = parts[1]
+                    if usn_candidate in validated_request.usns and usn_candidate not in succeeded:
+                        succeeded.append(usn_candidate)
+                        print(f"OK - Marked success: {usn_candidate}")
+            elif line.startswith('FAIL '):
+                # Extract USN
+                parts = line.split()
+                if len(parts) >= 2:
+                    usn_candidate = parts[1]
+                    if usn_candidate in validated_request.usns and usn_candidate not in failed:
+                        failed.append(usn_candidate)
+                        print(f"FAIL - Marked failed: {usn_candidate}")
         
         time_taken = time.time() - start_time
         
+        print(f"\n{'='*60}")
         print(f"RV SCRAPER COMPLETED - Success: {len(succeeded)} - Failed: {len(failed)} - Time: {time_taken:.2f}s")
+        print(f"{'='*60}")
         
         # Auto-calculate SGPA/CGPA after successful RV scraping
         # RV updates marks, so grades need recalculation
-        if len(succeeded) > 0 and calculate_grades_for_semester:
+        print(f"\n{'='*60}")
+        print(f"POST-SCRAPING: Grade Calculation")
+        print(f"{'='*60}")
+        if len(succeeded) > 0:
             try:
-                print(f"Calculating SGPA/CGPA for Semester {validated_request.semester}...")
-                grade_result = calculate_grades_for_semester(validated_request.semester, verbose=False)
-                if grade_result['success']:
-                    print(f"Grade calculation completed successfully")
+                print(f"Running grade calculation for Semester {validated_request.semester}...")
+                print(f"Students affected: {len(succeeded)}")
+                
+                # Use subprocess to call calculate_grades.py directly (more reliable than import)
+                # Use sys.executable to ensure we use the same Python interpreter
+                grade_cmd = [
+                    sys.executable,  # Use current Python interpreter
+                    GRADE_CALCULATOR,
+                    '--semester', str(validated_request.semester)
+                ]
+                
+                print(f"CMD: {' '.join(grade_cmd)}")
+                print(f"Python: {sys.executable}")
+                print(f"Script: {GRADE_CALCULATOR}")
+                print(f"CWD: {SCRIPTS_DIR}")
+                
+                grade_result = subprocess.run(
+                    grade_cmd,
+                    capture_output=True,
+                    text=True,
+                    cwd=SCRIPTS_DIR,
+                    encoding='utf-8',
+                    errors='replace',
+                    timeout=300  # 5 minute timeout
+                )
+                
+                if grade_result.returncode == 0:
+                    print(f"SUCCESS: Grade calculation completed")
+                    # Print last 20 lines of output
+                    output_lines = [line for line in grade_result.stdout.split('\n') if line.strip()]
+                    if output_lines:
+                        print("Grade Calculation Output:")
+                        for line in output_lines[-20:]:
+                            print(f"  {line}")
                 else:
-                    print(f"Grade calculation failed: {grade_result.get('error', 'Unknown error')}")
+                    print(f"FAILED: Grade calculation failed with exit code {grade_result.returncode}")
+                    if grade_result.stderr:
+                        print(f"Error output: {grade_result.stderr}")
+                    if grade_result.stdout:
+                        print(f"Standard output: {grade_result.stdout[-500:]}")  # Last 500 chars
+                    
+            except subprocess.TimeoutExpired:
+                print(f"ERROR: Grade calculation timed out (>5 min)")
+            except Exception as grade_error:
+                print(f"ERROR: Grade calculation exception: {str(grade_error)}")
             except Exception as e:
-                print(f"Grade calculation error (non-fatal): {str(e)}")
+                print(f"ERROR: Grade calculation crashed: {str(e)}")
+                import traceback
+                traceback.print_exc()
+        else:
+            print(f"SKIPPED: No successful scrapes, nothing to recalculate")
+        print(f"{'='*60}\n")
         
         return ScrapeResponse(
             success=True,
@@ -364,6 +444,7 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.environ.get("PORT", 8001))
+    port = 8001  # Fixed port for scraper service
+    print(f"Starting VTU Scraper Service on port {port}...")
     uvicorn.run(app, host="0.0.0.0", port=port)
 

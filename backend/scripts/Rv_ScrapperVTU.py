@@ -254,7 +254,7 @@ def get_vtu_rv_results(usn, url):
             usn_input_field.send_keys(usn)
             captcha_input_field.send_keys(captcha_text)
             driver.find_element(By.ID, "submit").click()
-            time.sleep(3)
+            time.sleep(5)  # Increased wait time for page load
             
             # Check for alert
             try:
@@ -275,12 +275,31 @@ def get_vtu_rv_results(usn, url):
             # Parse with BeautifulSoup
             soup = BeautifulSoup(driver.page_source, "html.parser")
             
+            # Wait for results table to be present
             try:
-                student_name = soup.find_all("td")[3].text.lstrip(" : ")
-                student_usn = soup.find_all("td")[1].text.lstrip(" : ")
+                # Check if we got results by looking for the divTable class
+                result_tables = soup.find_all("div", attrs={"class": "divTable"})
+                if not result_tables:
+                    # Page loaded but no results - might be invalid CAPTCHA or no RV results
+                    print(f"WARN {usn}: No result tables found, retrying...")
+                    continue
+            except Exception as e:
+                print(f"FAIL Could not find result tables: {e}")
+                continue
+            
+            try:
+                all_tds = soup.find_all("td")
+                if len(all_tds) < 4:
+                    print(f"WARN {usn}: Incomplete page load (only {len(all_tds)} td elements), retrying...")
+                    time.sleep(2)
+                    continue
+                    
+                student_name = all_tds[3].text.lstrip(" : ")
+                student_usn = all_tds[1].text.lstrip(" : ")
                 print(f"OK Found RV results for: {student_name} ({student_usn})")
             except (IndexError, AttributeError) as e:
-                print(f"FAIL Could not extract student info: {e}")
+                print(f"FAIL Could not extract student info (page may not be fully loaded): {e}")
+                print(f"     Found {len(soup.find_all('td'))} td elements")
                 continue
             
             # ==================== RV TABLE PARSING ====================
@@ -319,11 +338,11 @@ def get_vtu_rv_results(usn, url):
                             # 0: Subject Code
                             # 1: Subject Name
                             # 2: Internal Marks
-                            # 3: Old Marks (external)
+                            # 3: Old Marks (OLD external before RV)
                             # 4: Old Result
                             # 5: RV Marks (revaluation external)
                             # 6: RV Result
-                            # 7: Final Marks (total)
+                            # 7: Final Marks (FINAL EXTERNAL marks after RV)
                             # 8: Final Result
                             
                             if len(cells) < 9:
@@ -333,11 +352,11 @@ def get_vtu_rv_results(usn, url):
                             subject_code = cells[0].text.strip()
                             subject_name = cells[1].text.strip()
                             internal_text = cells[2].text.strip()
-                            old_marks_text = cells[3].text.strip()
+                            old_external_text = cells[3].text.strip()
                             old_result = cells[4].text.strip()
                             rv_marks_text = cells[5].text.strip()
                             rv_result = cells[6].text.strip()
-                            final_marks_text = cells[7].text.strip()
+                            final_external_text = cells[7].text.strip()  # FINAL EXTERNAL marks
                             final_result = cells[8].text.strip()
                             
                             # Skip header rows
@@ -352,14 +371,13 @@ def get_vtu_rv_results(usn, url):
                             
                             # Parse marks
                             internal_marks = parse_marks(internal_text)
-                            old_external_marks = parse_marks(old_marks_text)
+                            old_external_marks = parse_marks(old_external_text)
                             rv_external_marks = parse_marks(rv_marks_text)
-                            final_marks_vtu = parse_marks(final_marks_text)  # VTU's final marks (for reference only)
+                            final_external_marks = parse_marks(final_external_text)  # FINAL EXTERNAL
                             
-                            # CRITICAL: RV only changes EXTERNAL marks
-                            # Internal marks stay the same
-                            # We must recalculate total = internal + RV external
-                            recalculated_total = internal_marks + rv_external_marks
+                            # CRITICAL: Column 7 is FINAL EXTERNAL marks (after RV)
+                            # Total = Internal + Final External
+                            total_marks = internal_marks + final_external_marks
                             
                             # RV is RE-EVALUATION, not re-attempt!
                             # We should UPDATE the existing attempt's marks, not create a new attempt
@@ -409,8 +427,8 @@ def get_vtu_rv_results(usn, url):
                                 
                                 data = (
                                     internal_marks,          # Keep internal same
-                                    rv_external_marks,       # Update external with RV marks
-                                    recalculated_total,      # Recalculated: internal + RV external
+                                    final_external_marks,    # Use final external (extracted from final total)
+                                    total_marks,             # Use VTU's final total marks
                                     final_result,            # Use final result status (P/F)
                                     datetime.now(),
                                     student_usn,
@@ -420,14 +438,28 @@ def get_vtu_rv_results(usn, url):
                                 )
                                 
                                 try:
-                                    cursor.execute(update_query, data)
-                                    ext_change = f"{existing_external}→{rv_external_marks}" if existing_external != rv_external_marks else str(rv_external_marks)
-                                    total_change = f"{existing_total}→{recalculated_total}" if existing_total != recalculated_total else str(recalculated_total)
-                                    status_changed = f"{existing_status}→{final_result}" if existing_status != final_result else final_result
-                                    print(f"  UPDATE {subject_code}: RV (Attempt {existing_attempt}) | Ext: {ext_change}, Total: {total_change}, Status: {status_changed}")
-                                    print(f"         Internal: {internal_marks} (unchanged) + External: {rv_external_marks} (RV) = Total: {recalculated_total}")
+                                    rows_affected = cursor.execute(update_query, data)
+                                    cursor.fetchall()  # Clear any unread results from UPDATE
+                                    ext_change = f"{existing_external}->{final_external_marks}" if existing_external != final_external_marks else str(final_external_marks)
+                                    total_change = f"{existing_total}->{total_marks}" if existing_total != total_marks else str(total_marks)
+                                    status_changed = f"{existing_status}->{final_result}" if existing_status != final_result else final_result
+                                    print(f"  UPDATE {subject_code}: RV (Attempt {existing_attempt}) | Rows affected: {rows_affected}")
+                                    print(f"     RV Data: Old Ext={old_external_marks}, Final Ext={final_external_marks} (change: {old_external_marks}->{final_external_marks})")
+                                    print(f"     Recalculated: Internal={internal_marks} + External={final_external_marks} = Total={total_marks}")
+                                    print(f"     Status: {status_changed}")
+                                    
+                                    # Verify the update
+                                    cursor.execute("SELECT total_marks, external_marks, internal_marks FROM results WHERE student_usn=%s AND subject_code=%s AND semester=%s", 
+                                                 (student_usn, subject_code, detected_semester))
+                                    verify = cursor.fetchone()
+                                    cursor.fetchall()  # Clear any remaining results
+                                    if verify:
+                                        print(f"     VERIFY: DB now shows Total={verify[0]}, External={verify[1]}, Internal={verify[2]}")
+                                    
                                 except Exception as e:
                                     print(f"  FAIL Failed to update RV result for {subject_code}: {e}")
+                                    import traceback
+                                    traceback.print_exc()
                                 
                             else:
                                 # No existing record - this shouldn't happen for RV results
@@ -447,8 +479,8 @@ def get_vtu_rv_results(usn, url):
                                     subject_code,
                                     detected_semester,
                                     internal_marks,
-                                    rv_external_marks,
-                                    recalculated_total,  # Use recalculated total
+                                    final_external_marks,  # Use final external
+                                    total_marks,           # Use VTU's final total
                                     final_result,
                                     1,  # First attempt
                                     datetime.now()
@@ -457,6 +489,7 @@ def get_vtu_rv_results(usn, url):
                                 try:
                                     cursor.execute(insert_query, data)
                                     print(f"  INSERT {subject_code}: Old={old_result}, RV={rv_result}, Final={final_result} (Attempt 1)")
+                                    print(f"     Internal: {internal_marks} + External: {final_external_marks} = Total: {total_marks}")
                                 except Exception as e:
                                     # If foreign key constraint fails, try to add the subject first
                                     if "foreign key constraint" in str(e).lower():
@@ -479,11 +512,30 @@ def get_vtu_rv_results(usn, url):
                                     else:
                                         print(f"  FAIL Failed to insert RV result for {subject_code}: {e}")
                         
-                        connection.commit()
+                        try:
+                            connection.commit()
+                            print(f"  DB: Transaction COMMITTED for {student_usn}")
+                            
+                            # Verify commit worked by re-querying one subject
+                            if rows:
+                                first_subject = rows[0].find_all("div", attrs={"class": "divTableCell"})[0].text.strip()
+                                cursor.execute("SELECT total_marks FROM results WHERE student_usn=%s AND subject_code=%s LIMIT 1", 
+                                             (student_usn, first_subject))
+                                check = cursor.fetchone()
+                                cursor.fetchall()  # Clear any remaining results
+                                if check:
+                                    print(f"  DB: Commit verified - {first_subject} total_marks={check[0]}")
+                        except Exception as commit_error:
+                            print(f"  ERROR: Commit failed! {commit_error}")
+                            connection.rollback()
+                            cursor.close()
+                            close_connection(connection)
+                            return False
+                        
                         cursor.close()
                         close_connection(connection)
                 
-                print(f"OK {usn} - RV results scraped")
+                print(f"OK {usn} - RV results scraped and database updated")
                 return True
                 
             except Exception as e:
@@ -577,7 +629,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description='VTU RV (Revaluation) Results Scraper')
     parser.add_argument('--url', type=str, help='VTU RV Results URL', required=False)
-    parser.add_argument('--workers', type=int, default=5, help='Number of parallel workers')
+    parser.add_argument('--workers', type=int, default=20, help='Number of parallel workers')
     parser.add_argument('--usns', type=str, help='Comma-separated USN list', required=False)
     parser.add_argument('--scheme', type=str, help='Scheme (21/22)', required=False)
     
@@ -696,21 +748,29 @@ if __name__ == "__main__":
     success_count = 0
     start_time = time.time()
     
+    print(f"INFO Starting initial scrape with {workers} workers...")
+    print(f"INFO Progress: [0/{len(students)}] - Success: 0 - Failed: 0\n")
+    
     with ThreadPoolExecutor(max_workers=workers) as executor:
         future_to_usn = {
             executor.submit(get_vtu_rv_results, usn, url): usn
             for usn in students
         }
         
+        completed = 0
         for future in as_completed(future_to_usn):
             usn = future_to_usn[future]
+            completed += 1
             try:
                 if future.result():
                     success_count += 1
+                    print(f"PROGRESS [{completed}/{len(students)}] SUCCESS: {usn} - Total Success: {success_count}, Failed: {len(failed_usns)}")
                 else:
                     failed_usns.append(usn)
-            except Exception:
+                    print(f"PROGRESS [{completed}/{len(students)}] FAIL: {usn} - Total Success: {success_count}, Failed: {len(failed_usns)}")
+            except Exception as e:
                 failed_usns.append(usn)
+                print(f"PROGRESS [{completed}/{len(students)}] FAIL: {usn} (Exception: {str(e)[:50]}) - Total Success: {success_count}, Failed: {len(failed_usns)}")
     
     elapsed = time.time() - start_time
     

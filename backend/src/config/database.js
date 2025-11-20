@@ -31,10 +31,34 @@ const connectMongoDB = async () => {
     // Get MongoDB connection string from .env file
     const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/vtu_auth';
     
-    // Connect to MongoDB
-    await mongoose.connect(mongoURI);
+    // Extract host info for logging (hide password)
+    const isAtlas = mongoURI.includes('mongodb.net');
+    const isLocal = mongoURI.includes('localhost');
+    let hostInfo = 'Unknown';
     
-    console.log('✅ MongoDB connected successfully (Auth DB)');
+    if (isAtlas) {
+      const match = mongoURI.match(/@([^/]+)/);
+      hostInfo = match ? match[1] : 'MongoDB Atlas';
+    } else if (isLocal) {
+      hostInfo = 'localhost:27017';
+    }
+    
+    console.log('🔌 Connecting to MongoDB...');
+    console.log(`   📍 Host: ${hostInfo}`);
+    console.log(`   🗄️  Database: vtu_auth`);
+    console.log(`   🌐 Provider: ${isAtlas ? 'MongoDB Atlas (Cloud)' : isLocal ? 'Local MongoDB' : 'Custom MongoDB'}`);
+    
+    // Connect to MongoDB with Atlas Stable API configuration
+    await mongoose.connect(mongoURI, {
+      serverApi: {
+        version: '1',
+        strict: true,
+        deprecationErrors: true,
+      },
+      dbName: 'vtu_auth'
+    });
+    
+    console.log('✅ MongoDB connected successfully (Auth DB)\n');
   } catch (error) {
     console.error('❌ MongoDB connection failed:', error.message);
     process.exit(1); // Exit if database connection fails
@@ -75,9 +99,23 @@ const mysqlPool = mysql.createPool({
  */
 const testMySQLConnection = async () => {
   try {
+    const host = process.env.MYSQL_HOST || 'localhost';
+    const database = process.env.MYSQL_DATABASE || 'resana';
+    const user = process.env.MYSQL_USER || 'root';
+    
+    // Determine provider
+    const isCleverCloud = host.includes('clever-cloud.com');
+    const isLocal = host === 'localhost' || host === '127.0.0.1';
+    
+    console.log('🔌 Connecting to MySQL...');
+    console.log(`   📍 Host: ${host}`);
+    console.log(`   🗄️  Database: ${database}`);
+    console.log(`   👤 User: ${user}`);
+    console.log(`   🌐 Provider: ${isCleverCloud ? 'Clever Cloud (Cloud)' : isLocal ? 'Local MySQL' : 'Custom MySQL'}`);
+    
     // Execute a test query
     const [rows] = await mysqlPool.query('SELECT 1 + 1 AS result');
-    console.log('✅ MySQL connected successfully (Results DB)');
+    console.log('✅ MySQL connected successfully (Results DB)\n');
   } catch (error) {
     console.error('❌ MySQL connection failed:', error.message);
     process.exit(1); // Exit if database connection fails

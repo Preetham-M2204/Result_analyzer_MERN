@@ -115,6 +115,14 @@ router.get('/detailed-results', hodController.getDetailedResults);
 router.get('/subject-analytics', hodController.getSubjectAnalytics);
 
 /**
+ * GET /api/hod/subject-student-results
+ * 
+ * Get all students' results for a specific subject
+ * Query params: subjectCode (required), batch (required), semester (required), section (optional)
+ */
+router.get('/subject-student-results', hodController.getSubjectStudentResults);
+
+/**
  * GET /api/hod/section-comparison
  * 
  * Get section-wise comparison data

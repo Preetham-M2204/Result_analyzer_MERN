@@ -1,8 +1,9 @@
 ﻿const axios = require('axios');
 const { mysqlPool } = require('../config/database');
 
-const SCRAPER_SERVICE_URL = 'http://localhost:8000';
+const SCRAPER_SERVICE_URL = process.env.SCRAPER_SERVICE_URL || 'http://localhost:8001';
 const activeSessions = new Map();
+const activeRequests = new Map(); // Track axios cancel tokens
 
 exports.startVTUScraper = async (req, res) => {
   try {
@@ -44,10 +45,16 @@ exports.startVTUScraper = async (req, res) => {
     res.status(200).json({ success: true, message: 'Scraper started', data: { sessionId, totalUSNs: students.length, workers: workers || 20, scheme } });
 
     (async () => {
+      const abortController = new AbortController();
+      activeRequests.set(sessionId, abortController);
+      
       try {
-        const response = await axios.post(`${SCRAPER_SERVICE_URL}/scrape/vtu`, { url, semester, scheme, usns: students, workers: workers || 20 });
+        const response = await axios.post(`${SCRAPER_SERVICE_URL}/scrape/vtu`, 
+          { url, semester, scheme, usns: students, workers: workers || 20 },
+          { signal: abortController.signal }
+        );
         const session = activeSessions.get(sessionId);
-        if (session) {
+        if (session && session.status === 'running') {
           session.status = 'completed';
           session.processed = response.data.total;
           session.success = response.data.succeeded;
@@ -58,11 +65,13 @@ exports.startVTUScraper = async (req, res) => {
         }
       } catch (error) {
         const session = activeSessions.get(sessionId);
-        if (session) {
+        if (session && session.status !== 'stopped') {
           session.status = 'failed';
-          session.error = error.message;
+          session.error = error.name === 'CanceledError' ? 'Stopped by user' : error.message;
           session.endTime = new Date();
         }
+      } finally {
+        activeRequests.delete(sessionId);
       }
     })();
   } catch (error) {
@@ -89,12 +98,35 @@ exports.getScraperProgress = async (req, res) => {
 
 exports.stopScraper = async (req, res) => {
   try {
-    const session = activeSessions.get(req.params.sessionId);
-    if (!session) return res.status(404).json({ success: false, message: 'Session not found' });
-    if (session.status !== 'running') return res.status(400).json({ success: false, message: 'Session not running' });
+    const { sessionId } = req.params;
+    const session = activeSessions.get(sessionId);
+    
+    if (!session) {
+      return res.status(404).json({ success: false, message: 'Session not found' });
+    }
+    
+    if (session.status !== 'running') {
+      return res.status(400).json({ success: false, message: 'Session not running' });
+    }
+
+    // Cancel the ongoing axios request
+    const cancelToken = activeRequests.get(sessionId);
+    if (cancelToken) {
+      cancelToken.abort();
+      activeRequests.delete(sessionId);
+    }
+
+    // Update session status
     session.status = 'stopped';
     session.endTime = new Date();
-    res.status(200).json({ success: true, message: 'Scraper stopped' });
+    
+    console.log(`[SCRAPER] Stopped session: ${sessionId}`);
+    
+    res.status(200).json({ 
+      success: true, 
+      message: 'Scraper stop signal sent',
+      note: 'Currently running USNs may complete, but no new ones will start'
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to stop scraper', error: error.message });
   }
@@ -362,6 +394,9 @@ exports.startRVScraper = async (req, res) => {
 
     // Run scraper asynchronously
     (async () => {
+      const abortController = new AbortController();
+      activeRequests.set(sessionId, abortController);
+      
       try {
         console.log(`[RV SCRAPER] Starting - ${usns.length} USNs - Session: ${sessionId}`);
         console.log(`[RV SCRAPER] Payload:`, { url, semester: parseInt(semester), usns, workers: 20 });
@@ -372,116 +407,33 @@ exports.startRVScraper = async (req, res) => {
           usns,
           workers: 20
         }, {
-          timeout: 30 * 60 * 1000 // 30 minutes timeout
+          timeout: 30 * 60 * 1000, // 30 minutes timeout
+          signal: abortController.signal
         });
 
         const result = response.data;
 
-        // Update session
-        session.status = result.success ? 'completed' : 'failed';
-        session.processed = result.total;
-        session.success = result.succeeded;
-        session.failed = result.failed;
-        session.failures = result.failed_usns || [];
-        session.endTime = new Date();
-        session.logs = result.logs || [];
+        // Update session only if not stopped
+        if (session.status === 'running') {
+          session.status = result.success ? 'completed' : 'failed';
+          session.processed = result.total;
+          session.success = result.succeeded;
+          session.failed = result.failed;
+          session.failures = result.failed_usns || [];
+          session.endTime = new Date();
+          session.logs = result.logs || [];
+        }
 
         console.log(`[RV SCRAPER] Completed - Success: ${result.succeeded}/${result.total} - Session: ${sessionId}`);
       } catch (error) {
         console.error(`[RV SCRAPER] Error - Session: ${sessionId}`, error.message);
-        session.status = 'failed';
-        session.error = error.message;
-        session.endTime = new Date();
-      }
-    })();
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Failed to start RV scraper', error: error.message });
-  }
-};
-
-/**
- * Start RV (Revaluation) Scraper
- * Scrapes RV results from VTU (updates marks, not attempt number)
- */
-exports.startRVScraper = async (req, res) => {
-  try {
-    const { url, mode, usn, batchYear, workers } = req.body;
-
-    if (!url) {
-      return res.status(400).json({ success: false, message: 'URL is required' });
-    }
-
-    let students = [];
-    let scheme = '22'; // Default scheme
-
-    if (mode === 'single') {
-      if (!usn) return res.status(400).json({ success: false, message: 'USN required' });
-      students = [usn.toUpperCase()];
-      
-      // Get scheme from database for this student
-      const [rows] = await mysqlPool.execute('SELECT scheme FROM student_details WHERE usn = ?', [usn.toUpperCase()]);
-      if (rows.length > 0 && rows[0].scheme) {
-        scheme = rows[0].scheme;
-      }
-    } else if (mode === 'batch') {
-      if (!batchYear) return res.status(400).json({ success: false, message: 'Batch year required' });
-      
-      // Auto-detect scheme from batch year
-      scheme = batchYear <= 2021 ? '21' : '22';
-      
-      // Fetch all students from this batch
-      const [rows] = await mysqlPool.execute('SELECT usn FROM student_details WHERE batch = ? ORDER BY usn', [batchYear]);
-      students = rows.map(row => row.usn);
-      if (students.length === 0) return res.status(404).json({ success: false, message: 'No students found' });
-    }
-
-    const sessionId = `rv_${Date.now()}`;
-    activeSessions.set(sessionId, { 
-      type: 'rv', 
-      status: 'running', 
-      total: students.length, 
-      processed: 0, 
-      success: 0, 
-      failed: 0, 
-      failures: [], 
-      startTime: new Date(), 
-      batch: batchYear, 
-      scheme 
-    });
-
-    res.status(200).json({ 
-      success: true, 
-      message: 'RV Scraper started', 
-      data: { sessionId, totalUSNs: students.length, workers: workers || 5, scheme } 
-    });
-
-    // Background scraping
-    (async () => {
-      try {
-        const response = await axios.post(`${SCRAPER_SERVICE_URL}/scrape/rv`, { 
-          url, 
-          scheme, 
-          usns: students, 
-          workers: workers || 5 
-        });
-        
-        const session = activeSessions.get(sessionId);
-        if (session) {
-          session.status = 'completed';
-          session.processed = response.data.total;
-          session.success = response.data.succeeded;
-          session.failed = response.data.failed;
-          session.failures = response.data.failed_usns;
-          session.endTime = new Date();
-          session.timeTaken = response.data.time_taken;
-        }
-      } catch (error) {
-        const session = activeSessions.get(sessionId);
-        if (session) {
+        if (session.status !== 'stopped') {
           session.status = 'failed';
-          session.error = error.message;
+          session.error = error.name === 'CanceledError' ? 'Stopped by user' : error.message;
           session.endTime = new Date();
         }
+      } finally {
+        activeRequests.delete(sessionId);
       }
     })();
   } catch (error) {

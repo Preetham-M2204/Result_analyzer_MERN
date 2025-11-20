@@ -157,45 +157,70 @@ def get_subject_max_marks(subject_code, semester, cursor):
 
 def update_letter_grades(semester, cursor, conn):
     """
-    Update letter_grade and grade_points columns in results table
-    for all subjects in a given semester
+    Update letter_grade, grade_points, and result_status in results table
+    for all subjects in a given semester (LATEST ATTEMPT ONLY)
+    
+    VTU Pass/Fail Criteria:
+    - Internal-only subjects (external=0): total_marks >= 40 → PASS
+    - Regular subjects: external_marks >= 18 AND total_marks >= 40 → PASS
+    - Failed subjects MUST have grade='F' and grade_points=0
     """
     print(f"\n{'='*60}")
-    print(f"STEP 1: Updating Letter Grades for Semester {semester}")
+    print(f"STEP 1: Updating Letter Grades & Status for Semester {semester}")
     print(f"{'='*60}")
     
-    # Get all results for this semester
+    # Get all results for this semester (LATEST ATTEMPT ONLY)
     cursor.execute("""
-        SELECT result_id, subject_code, semester, total_marks, student_usn
-        FROM results
-        WHERE semester = %s AND total_marks IS NOT NULL
-    """, (semester,))
+        SELECT r.result_id, r.subject_code, r.semester, r.internal_marks, 
+               r.external_marks, r.total_marks, r.student_usn, r.attempt_number
+        FROM results r
+        INNER JOIN (
+            SELECT student_usn, subject_code, MAX(attempt_number) as max_attempt
+            FROM results
+            WHERE semester = %s
+            GROUP BY student_usn, subject_code
+        ) latest ON r.student_usn = latest.student_usn 
+                   AND r.subject_code = latest.subject_code 
+                   AND r.attempt_number = latest.max_attempt
+        WHERE r.semester = %s AND r.total_marks IS NOT NULL
+    """, (semester, semester))
     
     results = cursor.fetchall()
-    print(f"Found {len(results)} subject results to process")
+    print(f"Found {len(results)} subject results to process (latest attempts only)")
     
     updated = 0
-    for result_id, subject_code, sem, total_marks, usn in results:
+    for result_id, subject_code, sem, internal_marks, external_marks, total_marks, usn, attempt_num in results:
         # Determine max marks for this subject
         max_marks = get_subject_max_marks(subject_code, sem, cursor)
         
-        # Calculate letter grade
+        # Determine pass/fail status using VTU criteria
+        if external_marks == 0:  # Internal-only subject (NSS, PE, Yoga, etc.)
+            result_status = 'PASS' if total_marks >= 40 else 'FAIL'
+        else:  # Regular subject
+            result_status = 'PASS' if (external_marks >= 18 and total_marks >= 40) else 'FAIL'
+        
+        # Calculate letter grade from total marks
         letter_grade = get_letter_grade(total_marks, max_marks)
         grade_points = get_grade_points(letter_grade)
+        
+        # CRITICAL: If student failed, override grade to F regardless of marks
+        if result_status == 'FAIL':
+            letter_grade = 'F'
+            grade_points = 0
         
         # Update results table
         cursor.execute("""
             UPDATE results
-            SET letter_grade = %s, grade_points = %s
+            SET letter_grade = %s, grade_points = %s, result_status = %s
             WHERE result_id = %s
-        """, (letter_grade, grade_points, result_id))
+        """, (letter_grade, grade_points, result_status, result_id))
         
         updated += 1
         if updated % 50 == 0:
             print(f"  Processed {updated} results...")
     
     conn.commit()
-    print(f"✅ Updated letter grades for {updated} results")
+    print(f"[SUCCESS] Updated grades & status for {updated} results")
 
 
 # =============================================================================
@@ -230,6 +255,7 @@ def calculate_sgpa(semester, cursor, conn):
                 r.total_marks,
                 r.grade_points,
                 r.letter_grade,
+                r.result_status,
                 s.credits
             FROM results r
             LEFT JOIN subjects s ON r.subject_code = s.subject_code
@@ -258,7 +284,7 @@ def calculate_sgpa(semester, cursor, conn):
         
         missing_credits = []
         
-        for subject_code, total_marks, grade_points, letter_grade, credits in subject_results:
+        for subject_code, total_marks, grade_points, letter_grade, result_status, credits in subject_results:
             # Skip subjects without credit info
             if credits is None or credits == 0:
                 missing_credits.append(subject_code)
@@ -275,8 +301,8 @@ def calculate_sgpa(semester, cursor, conn):
             if grade_points is not None:
                 total_grade_points_weighted += (grade_points * credits)
             
-            # Check for backlogs
-            if letter_grade == 'F':
+            # Check for backlogs (based on result_status, not just grade)
+            if letter_grade == 'F' or result_status == 'FAIL':
                 backlog_count += 1
                 has_backlogs = True
         
@@ -318,7 +344,7 @@ def calculate_sgpa(semester, cursor, conn):
             print(f"  Processed {processed} students...")
     
     conn.commit()
-    print(f"✅ Calculated SGPA for {processed} students")
+    print(f"[SUCCESS] Calculated SGPA for {processed} students")
 
 
 # =============================================================================
@@ -366,7 +392,7 @@ def update_cgpa(cursor, conn):
         updated += 1
     
     conn.commit()
-    print(f"✅ Updated CGPA for {updated} students")
+    print(f"[SUCCESS] Updated CGPA for {updated} students")
 
 
 # =============================================================================
@@ -509,8 +535,8 @@ if __name__ == '__main__':
     result = calculate_grades_for_semester(args.semester, verbose=not args.quiet)
     
     if result['success']:
-        print(f"\n✅ SUCCESS: Grade calculation completed for Semester {args.semester}")
+        print(f"\n[SUCCESS] Grade calculation completed for Semester {args.semester}")
         sys.exit(0)
     else:
-        print(f"\n❌ ERROR: {result.get('error', 'Unknown error')}")
+        print(f"\n[ERROR] {result.get('error', 'Unknown error')}")
         sys.exit(1)

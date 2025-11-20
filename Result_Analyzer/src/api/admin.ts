@@ -6,7 +6,7 @@
 
 import axios from 'axios';
 
-const API_BASE = 'http://localhost:3000/api/admin';
+const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin`;
 
 // Get authorization header with JWT token
 const getAuthHeader = () => {

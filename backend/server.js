@@ -11,8 +11,8 @@
  * - MySQL: Student results data
  * - JWT: Stateless authentication tokens
  * 
- * Port: 3000
- * Frontend URL: http://localhost:5173 (Vite React app)
+ * Port: 5000 (Docker) or 3000 (Development)
+ * Frontend URL: http://localhost (Docker) or http://localhost:5173 (Vite dev)
  */
 
 // ============================================================
@@ -50,8 +50,8 @@ const PORT = process.env.PORT || 3000;
  * CORS (Cross-Origin Resource Sharing)
  * 
  * Why needed:
- * - Frontend runs on localhost:5173 (Vite dev server)
- * - Backend runs on localhost:3000
+ * - Frontend runs on localhost (Docker) or localhost:5173 (Vite dev)
+ * - Backend runs on localhost:5000 (Docker) or localhost:3000 (dev)
  * - Different ports = different origins
  * - Browser blocks requests by default
  * 
@@ -63,7 +63,11 @@ const PORT = process.env.PORT || 3000;
 app.use(cors({
   origin: [
     'http://localhost:5173',
-    'http://localhost:5174'
+    'http://localhost:5174',
+    'http://localhost',
+    'http://localhost:80',
+    'http://result_analyzer_frontend',
+    'http://result_analyzer_frontend:80'
   ],
   credentials: true, // Allow cookies and Authorization headers
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],

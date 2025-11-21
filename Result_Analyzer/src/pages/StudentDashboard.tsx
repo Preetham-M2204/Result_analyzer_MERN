@@ -265,13 +265,18 @@ const StudentDashboard = () => {
       {/* Header */}
       <header className="dashboard-header">
         <div className="header-content">
-          <div>
-            <h1>Welcome, {profile?.name || user?.name}!</h1>
-            <p className="header-subtitle">{profile?.usn}</p>
+          <div className="header-left">
+            <img src="/Logo.jpeg" alt="Logo" className="admin-logo" />
+            <div className="header-titles">
+              <h1>Student Dashboard</h1>
+              <p className="header-subtitle">Welcome, {profile?.name || user?.name} ({profile?.usn})</p>
+            </div>
           </div>
-          <button onClick={logout} className="logout-btn">
-            Logout
-          </button>
+          <div className="header-right">
+            <button onClick={logout} className="logout-btn">
+              Logout
+            </button>
+          </div>
         </div>
       </header>
 
@@ -420,7 +425,7 @@ const StudentDashboard = () => {
           {/* Download PDF Button */}
           <div className="download-section">
             <button className="download-btn" onClick={() => alert('PDF download feature coming soon!')}>
-              📥 Download Semester {semesterResults.semester} Results (PDF)
+               Download Semester {semesterResults.semester} Results (PDF)
             </button>
           </div>
         </div>

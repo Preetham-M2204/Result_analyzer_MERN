@@ -1,0 +1,456 @@
+/**
+ * TEACHER DASHBOARD STYLES
+ * ========================
+ * Professional, responsive dashboard design
+ * Font: Roboto | Spacing: 8px system | Colors: Purple palette (Teacher Theme)
+ * Scoped to .teacher-dashboard to prevent conflicts
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+/* ============================================================
+   LAYOUT & SCROLLBAR
+   ============================================================ */
+
+.teacher-dashboard {
+  height: 100vh;
+  overflow-y: auto;
+  background-image: url('../assets/dashboard-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  font-family: 'Roboto', sans-serif;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Custom Scrollbar - Scoped to Dashboard Container */
+.teacher-dashboard::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.teacher-dashboard::-webkit-scrollbar-track {
+  background: #f5f5f5;
+}
+
+.teacher-dashboard::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #ab47bc, #7b1fa2);
+  border-radius: 5px;
+  border: 2px solid #f5f5f5;
+}
+
+.teacher-dashboard::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #9c27b0, #4a148c);
+}
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+
+.teacher-dashboard .dashboard-header {
+  background: linear-gradient(135deg, #7b1fa2 0%, #d173e1 100%);
+  color: white;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.teacher-dashboard .header-content {
+  max-width: 100%;
+  margin: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.teacher-dashboard .header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.teacher-dashboard .admin-logo {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: white;
+  padding: 2px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.teacher-dashboard .header-titles h1 {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: white;
+}
+
+.teacher-dashboard .header-subtitle {
+  margin: 4px 0 0 0;
+  opacity: 0.9;
+  font-size: 14px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.teacher-dashboard .logout-btn {
+  padding: 8px 24px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(4px);
+}
+
+.teacher-dashboard .logout-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* ============================================================
+   MAIN CONTENT AREA
+   ============================================================ */
+
+.teacher-dashboard .dashboard-content {
+  flex: 1;
+  padding: 32px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ============================================================
+   CARDS & SECTIONS
+   ============================================================ */
+
+.teacher-dashboard .section-card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  margin-bottom: 24px;
+  border: 1px solid rgba(0,0,0,0.02);
+}
+
+.teacher-dashboard .section-title {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #263238;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ============================================================
+   FORM ELEMENTS
+   ============================================================ */
+
+.teacher-dashboard .form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.teacher-dashboard .form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #546e7a;
+}
+
+.teacher-dashboard .form-select {
+  width: 100%;
+  padding: 10px 16px;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: 'Roboto', sans-serif;
+  background: white;
+  color: #37474f;
+  transition: all 0.2s ease;
+}
+
+.teacher-dashboard .form-select:focus {
+  outline: none;
+  border-color: #9c27b0;
+  box-shadow: 0 0 0 3px rgba(156, 39, 176, 0.1);
+}
+
+.teacher-dashboard .form-select:disabled {
+  background: #f5f5f5;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* ============================================================
+   STATS CARDS
+   ============================================================ */
+
+.teacher-dashboard .stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+.teacher-dashboard .stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.03);
+  border: 1px solid rgba(0,0,0,0.05);
+  transition: transform 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.teacher-dashboard .stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+
+/* Top Border Accents for Stats */
+.teacher-dashboard .stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+}
+
+.teacher-dashboard .stat-card.blue::before,
+.teacher-dashboard .stat-card.green::before,
+.teacher-dashboard .stat-card.red::before,
+.teacher-dashboard .stat-card.orange::before,
+.teacher-dashboard .stat-card.purple::before,
+.teacher-dashboard .stat-card.teal::before {
+  background: linear-gradient(90deg, #7b1fa2, #9c27b0);
+}
+
+.teacher-dashboard .stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+  color: #78909c;
+}
+
+.teacher-dashboard .stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #263238;
+}
+
+/* ============================================================
+   ACTION BAR
+   ============================================================ */
+
+.teacher-dashboard .action-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+  background: white;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.teacher-dashboard .view-toggles {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.teacher-dashboard .toggle-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #f5f5f5;
+  color: #546e7a;
+}
+
+.teacher-dashboard .toggle-btn.active {
+  background: #9c27b0;
+  color: white;
+  box-shadow: 0 2px 8px rgba(156, 39, 176, 0.3);
+}
+
+.teacher-dashboard .toggle-btn:hover:not(.active) {
+  background: #e0e0e0;
+}
+
+.teacher-dashboard .export-btn {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.2);
+}
+
+.teacher-dashboard .export-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(25, 118, 210, 0.3);
+}
+
+/* ============================================================
+   TABLES
+   ============================================================ */
+
+.teacher-dashboard .table-container {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid #eceff1;
+}
+
+.teacher-dashboard table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.teacher-dashboard th {
+  background: #f5f5f5;
+  padding: 14px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #455a64;
+  border-bottom: 2px solid #e0e0e0;
+  white-space: nowrap;
+}
+
+.teacher-dashboard td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  color: #37474f;
+}
+
+.teacher-dashboard tr:hover {
+  background: #f9f9f9;
+}
+
+.teacher-dashboard .status-badge {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.teacher-dashboard .status-badge.pass { background: #e8f5e9; color: #2e7d32; }
+.teacher-dashboard .status-badge.fail { background: #ffebee; color: #c62828; }
+.teacher-dashboard .status-badge.grade { background: #f3e5f5; color: #7b1fa2; }
+
+/* ============================================================
+   LOADING SPINNER
+   ============================================================ */
+
+.teacher-dashboard .loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+  color: #78909c;
+}
+
+.teacher-dashboard .spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(156, 39, 176, 0.1);
+  border-top-color: #9c27b0;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   EMPTY STATES
+   ============================================================ */
+
+.teacher-dashboard .empty-state {
+  text-align: center;
+  padding: 48px;
+  color: #90a4ae;
+}
+
+.teacher-dashboard .empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .teacher-dashboard .dashboard-header {
+    padding: 16px 20px;
+  }
+  
+  .teacher-dashboard .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  .teacher-dashboard .header-right {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .teacher-dashboard .dashboard-content {
+    padding: 16px;
+  }
+  
+  .teacher-dashboard .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .teacher-dashboard .action-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .teacher-dashboard .view-toggles {
+    justify-content: center;
+  }
+  
+  .teacher-dashboard .export-btn {
+    justify-content: center;
+  }
+}

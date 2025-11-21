@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/apiClient';
+import '../styles/HODDashboard.css';
 
 type TopPerformer = {
   usn: string;
@@ -81,22 +82,24 @@ const HODDashboard = () => {
   }, [tab]);
 
   return (
-    <div style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', backgroundColor: '#f5f5f5', overflow: 'hidden', fontFamily: 'Roboto, sans-serif' }}>
-      <div style={{ background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)', color: 'white', padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600 }}>HOD Dashboard</h1>
-          <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', opacity: 0.9 }}>Welcome, {user?.name || user?.email}</p>
-        </div>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <button onClick={() => navigate('/hod/dashboard-enhanced')} style={{ padding: '0.5rem 1.25rem', background: '#4caf50', border: 'none', borderRadius: '6px', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem' }}>
-            ⚡ Try Enhanced Dashboard
-          </button>
-          <button onClick={() => navigate('/hod/detailed-analytics')} style={{ padding: '0.5rem 1.25rem', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '6px', color: 'white', cursor: 'pointer', fontWeight: 500, fontSize: '0.875rem' }}>
-            📊 Detailed Analytics
-          </button>
-          <button onClick={logout} style={{ padding: '0.5rem 1.25rem', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '6px', color: 'white', cursor: 'pointer', fontWeight: 500 }}>
-            Logout
-          </button>
+    <div className="hod-dashboard" style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div className="dashboard-header">
+        <div className="header-content">
+          <div>
+            <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600 }}>HOD Dashboard</h1>
+            <p className="header-subtitle">Welcome, {user?.name || user?.email}</p>
+          </div>
+          <div className="header-right">
+            <button onClick={() => navigate('/hod/dashboard-enhanced')} style={{ padding: '0.5rem 1.25rem', background: '#4caf50', border: 'none', borderRadius: '6px', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem' }}>
+               Try Enhanced Dashboard
+            </button>
+            <button onClick={() => navigate('/hod/detailed-analytics')} style={{ padding: '0.5rem 1.25rem', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '6px', color: 'white', cursor: 'pointer', fontWeight: 500, fontSize: '0.875rem' }}>
+               Detailed Analytics
+            </button>
+            <button onClick={logout} className="logout-btn">
+              Logout
+            </button>
+          </div>
         </div>
       </div>
 
@@ -109,7 +112,7 @@ const HODDashboard = () => {
         </button>
       </div>
 
-      <div style={{ flex: 1, overflow: 'auto', padding: '2rem' }}>
+      <div className="dashboard-scroll-container" style={{ flex: 1, overflow: 'auto', padding: '2rem' }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
           {tab === 'toppers' && (
             <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>

@@ -13,6 +13,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/apiClient';
 import * as XLSX from 'xlsx';
+import '../styles/HODDashboard.css';
 
 type StudentResult = {
   usn: string;
@@ -108,7 +109,6 @@ const HODDetailedAnalytics = () => {
       }
       
       const resp = await apiClient.get(`/api/hod/detailed-results?${params.toString()}`);
-      console.log('Detailed results response:', resp.data);
       
       setResults(resp.data?.data?.results || []);
       setSubjectStats(resp.data?.data?.subjectStats || []);
@@ -312,455 +312,295 @@ const HODDetailedAnalytics = () => {
     );
   });
 
-  // Note: groupedBySubject is prepared for future use
-  // const subjectList = Object.values(groupedBySubject);
-
   return (
-    <div style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', backgroundColor: '#f5f5f5', overflow: 'hidden', fontFamily: 'Roboto, sans-serif' }}>
+    <div className="hod-dashboard">
       {/* Header */}
-      <div style={{ background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)', color: 'white', padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600 }}>Detailed Results Analytics</h1>
-          <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', opacity: 0.9 }}>Complete semester-wise result analysis</p>
+      <header className="dashboard-header">
+        <div className="header-content">
+          <div className="header-left">
+            <img src="/Logo.jpeg" alt="Logo" className="admin-logo" />
+            <div className="header-titles">
+              <h1>Detailed Results Analytics</h1>
+              <p className="header-subtitle">Complete semester-wise result analysis</p>
+            </div>
+          </div>
+          <div className="header-right">
+            <button onClick={() => navigate('/hod/dashboard')} className="logout-btn">
+              Back to Dashboard
+            </button>
+            <button onClick={logout} className="logout-btn">
+              Logout
+            </button>
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <button onClick={() => navigate('/hod/dashboard')} style={{ padding: '0.5rem 1.25rem', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '6px', color: 'white', cursor: 'pointer', fontWeight: 500, fontSize: '0.875rem' }}>
-            Back to Dashboard
-          </button>
-          <button onClick={logout} style={{ padding: '0.5rem 1.25rem', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '6px', color: 'white', cursor: 'pointer', fontWeight: 500, fontSize: '0.875rem' }}>
-            Logout
-          </button>
-        </div>
-      </div>
+      </header>
 
       {/* Content */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '2rem' }}>
-        <div style={{ maxWidth: '1600px', margin: '0 auto' }}>
-          
-          {/* Filters */}
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', marginBottom: '1.5rem' }}>
-            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: 600, color: '#212121' }}>Select Batch & Semester</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: '#616161' }}>Batch</label>
-                <select value={selectedBatch} onChange={(e) => setSelectedBatch(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #e0e0e0', borderRadius: '4px', fontSize: '0.875rem' }}>
-                  {batches.map(b => <option key={b} value={b}>{b}</option>)}
-                </select>
-              </div>
-              
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: '#616161' }}>Semester</label>
-                <select value={selectedSemester} onChange={(e) => setSelectedSemester(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #e0e0e0', borderRadius: '4px', fontSize: '0.875rem' }}>
-                  {semesters.map(s => <option key={s} value={s}>Semester {s}</option>)}
-                </select>
-              </div>
-              
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: '#616161' }}>Section</label>
-                <select value={selectedSection} onChange={(e) => setSelectedSection(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #e0e0e0', borderRadius: '4px', fontSize: '0.875rem' }}>
-                  <option value="all">All Sections</option>
-                  {sections.map(s => <option key={s} value={s}>Section {s}</option>)}
-                </select>
-              </div>
-              
-              <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                <button onClick={fetchDetailedResults} disabled={loading} style={{ width: '100%', padding: '0.5rem', background: '#1976d2', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 500, fontSize: '0.875rem', opacity: loading ? 0.6 : 1 }}>
-                  {loading ? 'Loading...' : 'Fetch Results'}
+      <div className="dashboard-content">
+        
+        {/* Filters */}
+        <div className="section-card">
+          <h3 className="section-title">Select Batch & Semester</h3>
+          <div className="form-grid">
+            <div className="form-group">
+              <label>Batch</label>
+              <select 
+                className="form-select"
+                value={selectedBatch} 
+                onChange={(e) => setSelectedBatch(e.target.value)}
+              >
+                {batches.map(b => <option key={b} value={b}>{b}</option>)}
+              </select>
+            </div>
+            
+            <div className="form-group">
+              <label>Semester</label>
+              <select 
+                className="form-select"
+                value={selectedSemester} 
+                onChange={(e) => setSelectedSemester(e.target.value)}
+              >
+                {semesters.map(s => <option key={s} value={s}>Semester {s}</option>)}
+              </select>
+            </div>
+            
+            <div className="form-group">
+              <label>Section</label>
+              <select 
+                className="form-select"
+                value={selectedSection} 
+                onChange={(e) => setSelectedSection(e.target.value)}
+              >
+                <option value="all">All Sections</option>
+                {sections.map(s => <option key={s} value={s}>Section {s}</option>)}
+              </select>
+            </div>
+            
+            <div className="form-group">
+              <button 
+                className="action-btn" 
+                onClick={fetchDetailedResults} 
+                disabled={loading}
+                style={{ width: '100%' }}
+              >
+                {loading ? 'Loading...' : 'Fetch Results'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Overall Statistics */}
+        {overallStats && (
+          <div className="section-card">
+            <div className="section-title">
+              <span>
+                Overall Statistics - Batch {selectedBatch}, Semester {selectedSemester}
+                {selectedSection !== 'all' && `, Section ${selectedSection}`}
+              </span>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button className="export-btn" onClick={exportToExcel}>
+                  Export Statistics
                 </button>
+                <button className="export-btn" onClick={exportOverallSemester} style={{ backgroundColor: '#2196f3' }}>
+                  Export Overall Semester
+                </button>
+              </div>
+            </div>
+            
+            <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
+              <div className="stat-card blue" style={{ padding: '1rem', background: '#e3f2fd', borderRadius: '6px', border: '1px solid #90caf9' }}>
+                <div style={{ fontSize: '0.75rem', color: '#1976d2', fontWeight: 500, marginBottom: '0.25rem' }}>Total Students</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1565c0' }}>{overallStats.total_students}</div>
+              </div>
+              
+              <div className="stat-card green" style={{ padding: '1rem', background: '#e8f5e9', borderRadius: '6px', border: '1px solid #81c784' }}>
+                <div style={{ fontSize: '0.75rem', color: '#388e3c', fontWeight: 500, marginBottom: '0.25rem' }}>Average SGPA</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#2e7d32' }}>
+                  {overallStats.average_sgpa ? parseFloat(overallStats.average_sgpa.toString()).toFixed(2) : '-'}
+                </div>
+              </div>
+              
+              <div className="stat-card purple" style={{ padding: '1rem', background: '#f3e5f5', borderRadius: '6px', border: '1px solid #ba68c8' }}>
+                <div style={{ fontSize: '0.75rem', color: '#7b1fa2', fontWeight: 500, marginBottom: '0.25rem' }}>Highest SGPA</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#6a1b9a' }}>
+                  {overallStats.highest_sgpa ? parseFloat(overallStats.highest_sgpa.toString()).toFixed(2) : '-'}
+                </div>
+              </div>
+              
+              <div className="stat-card green" style={{ padding: '1rem', background: '#e8f5e9', borderRadius: '6px', border: '1px solid #81c784' }}>
+                <div style={{ fontSize: '0.75rem', color: '#388e3c', fontWeight: 500, marginBottom: '0.25rem' }}>Passed</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#2e7d32' }}>{overallStats.students_passed}</div>
+              </div>
+              
+              <div className="stat-card red" style={{ padding: '1rem', background: '#ffebee', borderRadius: '6px', border: '1px solid #e57373' }}>
+                <div style={{ fontSize: '0.75rem', color: '#c62828', fontWeight: 500, marginBottom: '0.25rem' }}>With Backlogs</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#b71c1c' }}>{overallStats.students_with_backlogs}</div>
+              </div>
+              
+              <div className="stat-card orange" style={{ padding: '1rem', background: '#fff3e0', borderRadius: '6px', border: '1px solid #ffb74d' }}>
+                <div style={{ fontSize: '0.75rem', color: '#f57c00', fontWeight: 500, marginBottom: '0.25rem' }}>Pass %</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#e65100' }}>
+                  {((overallStats.students_passed / overallStats.total_students) * 100).toFixed(1)}%
+                </div>
               </div>
             </div>
           </div>
+        )}
 
-          {/* Overall Statistics */}
-          {overallStats && (
-            <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', marginBottom: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#212121' }}>
-                  Overall Statistics - Batch {selectedBatch}, Semester {selectedSemester}
-                  {selectedSection !== 'all' && `, Section ${selectedSection}`}
-                </h3>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button onClick={exportToExcel} style={{ padding: '0.5rem 1rem', background: '#4caf50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 500, fontSize: '0.875rem' }}>
-                    Export Statistics
-                  </button>
-                  <button onClick={exportOverallSemester} style={{ padding: '0.5rem 1rem', background: '#2196f3', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 500, fontSize: '0.875rem' }}>
-                    Export Overall Semester
-                  </button>
-                </div>
-              </div>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
-                <div style={{ padding: '1rem', background: '#e3f2fd', borderRadius: '6px', border: '1px solid #90caf9' }}>
-                  <div style={{ fontSize: '0.75rem', color: '#1976d2', fontWeight: 500, marginBottom: '0.25rem' }}>Total Students</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1565c0' }}>{overallStats.total_students}</div>
-                </div>
-                
-                <div style={{ padding: '1rem', background: '#e8f5e9', borderRadius: '6px', border: '1px solid #81c784' }}>
-                  <div style={{ fontSize: '0.75rem', color: '#388e3c', fontWeight: 500, marginBottom: '0.25rem' }}>Average SGPA</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#2e7d32' }}>
-                    {overallStats.average_sgpa ? parseFloat(overallStats.average_sgpa.toString()).toFixed(2) : '-'}
-                  </div>
-                </div>
-                
-                <div style={{ padding: '1rem', background: '#f3e5f5', borderRadius: '6px', border: '1px solid #ba68c8' }}>
-                  <div style={{ fontSize: '0.75rem', color: '#7b1fa2', fontWeight: 500, marginBottom: '0.25rem' }}>Highest SGPA</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#6a1b9a' }}>
-                    {overallStats.highest_sgpa ? parseFloat(overallStats.highest_sgpa.toString()).toFixed(2) : '-'}
-                  </div>
-                </div>
-                
-                <div style={{ padding: '1rem', background: '#e8f5e9', borderRadius: '6px', border: '1px solid #81c784' }}>
-                  <div style={{ fontSize: '0.75rem', color: '#388e3c', fontWeight: 500, marginBottom: '0.25rem' }}>Passed</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#2e7d32' }}>{overallStats.students_passed}</div>
-                </div>
-                
-                <div style={{ padding: '1rem', background: '#ffebee', borderRadius: '6px', border: '1px solid #e57373' }}>
-                  <div style={{ fontSize: '0.75rem', color: '#c62828', fontWeight: 500, marginBottom: '0.25rem' }}>With Backlogs</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#b71c1c' }}>{overallStats.students_with_backlogs}</div>
-                </div>
-                
-                <div style={{ padding: '1rem', background: '#fff3e0', borderRadius: '6px', border: '1px solid #ffb74d' }}>
-                  <div style={{ fontSize: '0.75rem', color: '#f57c00', fontWeight: 500, marginBottom: '0.25rem' }}>Pass %</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#e65100' }}>
-                    {((overallStats.students_passed / overallStats.total_students) * 100).toFixed(1)}%
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* View Mode Toggle */}
-          {results.length > 0 && (
-            <div style={{ background: 'white', padding: '1rem', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', marginBottom: '1.5rem' }}>
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <button onClick={() => setViewMode('subject')} style={{ padding: '0.5rem 1rem', background: viewMode === 'subject' ? '#1976d2' : '#e0e0e0', color: viewMode === 'subject' ? 'white' : '#616161', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 500, fontSize: '0.875rem' }}>
-                  Subject-wise View
-                </button>
-                <button onClick={() => setViewMode('student')} style={{ padding: '0.5rem 1rem', background: viewMode === 'student' ? '#1976d2' : '#e0e0e0', color: viewMode === 'student' ? 'white' : '#616161', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 500, fontSize: '0.875rem' }}>
-                  Student-wise View
-                </button>
-                
-                {viewMode === 'student' && (
-                  <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <input 
-                      type="text" 
-                      placeholder="Search by USN or Name..." 
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      style={{ 
-                        padding: '0.5rem 1rem', 
-                        border: '1px solid #e0e0e0', 
-                        borderRadius: '4px', 
-                        fontSize: '0.875rem',
-                        width: '300px',
-                        outline: 'none'
-                      }}
-                    />
-                    {searchQuery && (
-                      <button 
-                        onClick={() => setSearchQuery('')}
-                        style={{ 
-                          padding: '0.5rem 0.75rem', 
-                          background: '#f44336', 
-                          color: 'white', 
-                          border: 'none', 
-                          borderRadius: '4px', 
-                          cursor: 'pointer', 
-                          fontSize: '0.75rem',
-                          fontWeight: 500
-                        }}
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Subject-wise Statistics */}
-          {viewMode === 'subject' && subjectStats.length > 0 && (
-            <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', marginBottom: '1.5rem' }}>
-              <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem', fontWeight: 600, color: '#212121' }}>Subject-wise Performance</h3>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                  <thead style={{ background: '#f5f5f5' }}>
-                    <tr>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Code</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Subject Name</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Students</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Passed</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Pass %</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Avg</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Highest</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Lowest</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {subjectStats.map(s => (
-                      <tr 
-                        key={s.subject_code} 
-                        style={{ 
-                          borderBottom: '1px solid #eeeeee', 
-                          transition: 'background 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                      >
-                        <td 
-                          style={{ padding: '0.75rem', color: '#424242', fontFamily: 'monospace', fontWeight: 600, cursor: 'pointer' }}
-                          onClick={() => handleSubjectClick(s.subject_code, s.subject_name)}
-                        >
-                          {s.subject_code}
-                        </td>
-                        <td 
-                          style={{ padding: '0.75rem', color: '#212121', cursor: 'pointer' }}
-                          onClick={() => handleSubjectClick(s.subject_code, s.subject_name)}
-                        >
-                          {s.subject_name}
-                        </td>
-                        <td 
-                          style={{ padding: '0.75rem', color: '#616161', cursor: 'pointer' }}
-                          onClick={() => handleSubjectClick(s.subject_code, s.subject_name)}
-                        >
-                          {s.total_students}
-                        </td>
-                        <td 
-                          style={{ padding: '0.75rem', color: '#4caf50', fontWeight: 600, cursor: 'pointer' }}
-                          onClick={() => handleSubjectClick(s.subject_code, s.subject_name)}
-                        >
-                          {s.passed_count}
-                        </td>
-                        <td 
-                          style={{ padding: '0.75rem', cursor: 'pointer' }}
-                          onClick={() => handleSubjectClick(s.subject_code, s.subject_name)}
-                        >
-                          <span style={{ display: 'inline-block', padding: '0.25rem 0.5rem', borderRadius: '4px', background: s.pass_percentage >= 75 ? '#4caf50' : s.pass_percentage >= 50 ? '#ff9800' : '#f44336', color: 'white', fontWeight: 600, fontSize: '0.75rem' }}>
-                            {s.pass_percentage ? parseFloat(s.pass_percentage.toString()).toFixed(1) : '0'}%
-                          </span>
-                        </td>
-                        <td 
-                          style={{ padding: '0.75rem', color: '#424242', cursor: 'pointer' }}
-                          onClick={() => handleSubjectClick(s.subject_code, s.subject_name)}
-                        >
-                          {s.average_marks ? parseFloat(s.average_marks.toString()).toFixed(1) : '-'}
-                        </td>
-                        <td 
-                          style={{ padding: '0.75rem', color: '#4caf50', fontWeight: 600, cursor: 'pointer' }}
-                          onClick={() => handleSubjectClick(s.subject_code, s.subject_name)}
-                        >
-                          {s.highest_marks}
-                        </td>
-                        <td 
-                          style={{ padding: '0.75rem', color: '#616161', cursor: 'pointer' }}
-                          onClick={() => handleSubjectClick(s.subject_code, s.subject_name)}
-                        >
-                          {s.lowest_marks}
-                        </td>
-                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              exportSubjectWise(s.subject_code, s.subject_name);
-                            }}
-                            style={{ 
-                              padding: '0.375rem 0.75rem', 
-                              background: '#ff9800', 
-                              color: 'white', 
-                              border: 'none', 
-                              borderRadius: '4px', 
-                              cursor: 'pointer', 
-                              fontWeight: 500, 
-                              fontSize: '0.75rem' 
-                            }}
-                          >
-                            Export
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Student-wise Results */}
-          {viewMode === 'student' && studentList.length > 0 && (
-            <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: '#212121' }}>Student-wise Results</h3>
-                <div style={{ fontSize: '0.875rem', color: '#616161' }}>
-                  Showing {studentList.length} of {allStudents.length} students
-                </div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {studentList.map((student: any) => (
-                  <div key={student.usn} style={{ padding: '1rem', border: '1px solid #e0e0e0', borderRadius: '6px', background: '#fafafa' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                      <div>
-                        <div style={{ fontSize: '1rem', fontWeight: 600, color: '#212121' }}>{student.name}</div>
-                        <div style={{ fontSize: '0.875rem', color: '#616161', fontFamily: 'monospace' }}>{student.usn} | Section: {student.section}</div>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '1.125rem', fontWeight: 700, color: '#4caf50' }}>
-                          SGPA: {student.sgpa ? parseFloat(student.sgpa.toString()).toFixed(2) : '-'}
-                        </div>
-                        <div style={{ fontSize: '0.875rem', color: '#616161' }}>
-                          {student.percentage ? parseFloat(student.percentage.toString()).toFixed(1) : '-'}% | Grade: {student.class_grade} | Backlogs: {student.backlog_count || 0}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
-                        <thead style={{ background: '#eeeeee' }}>
-                          <tr>
-                            <th style={{ padding: '0.5rem', textAlign: 'left', fontWeight: 600, color: '#424242' }}>Subject</th>
-                            <th style={{ padding: '0.5rem', textAlign: 'center', fontWeight: 600, color: '#424242' }}>Internal</th>
-                            <th style={{ padding: '0.5rem', textAlign: 'center', fontWeight: 600, color: '#424242' }}>External</th>
-                            <th style={{ padding: '0.5rem', textAlign: 'center', fontWeight: 600, color: '#424242' }}>Total</th>
-                            <th style={{ padding: '0.5rem', textAlign: 'center', fontWeight: 600, color: '#424242' }}>Grade</th>
-                            <th style={{ padding: '0.5rem', textAlign: 'center', fontWeight: 600, color: '#424242' }}>Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {student.subjects.map((sub: StudentResult, idx: number) => (
-                            <tr key={idx} style={{ borderBottom: '1px solid #e0e0e0' }}>
-                              <td style={{ padding: '0.5rem', color: '#212121' }}>{sub.subject_code} - {sub.subject_name}</td>
-                              <td style={{ padding: '0.5rem', textAlign: 'center', color: '#616161' }}>{sub.internal_marks}</td>
-                              <td style={{ padding: '0.5rem', textAlign: 'center', color: '#616161' }}>{sub.external_marks}</td>
-                              <td style={{ padding: '0.5rem', textAlign: 'center', color: '#424242', fontWeight: 600 }}>{sub.total_marks}</td>
-                              <td style={{ padding: '0.5rem', textAlign: 'center' }}>
-                                <span style={{ display: 'inline-block', padding: '0.25rem 0.5rem', borderRadius: '4px', background: '#1976d2', color: 'white', fontWeight: 600 }}>
-                                  {sub.letter_grade}
-                                </span>
-                              </td>
-                              <td style={{ padding: '0.5rem', textAlign: 'center' }}>
-                                <span style={{ display: 'inline-block', padding: '0.25rem 0.5rem', borderRadius: '4px', background: (sub.result_status === 'PASS' || sub.result_status === 'P') ? '#4caf50' : '#f44336', color: 'white', fontWeight: 600 }}>
-                                  {sub.result_status === 'P' ? 'PASS' : sub.result_status === 'F' ? 'FAIL' : sub.result_status}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* No students found after search */}
-          {viewMode === 'student' && results.length > 0 && studentList.length === 0 && (
-            <div style={{ background: 'white', padding: '3rem', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', textAlign: 'center', color: '#757575' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔍</div>
-              <div style={{ fontSize: '1.125rem', fontWeight: 500, marginBottom: '0.5rem' }}>No Students Found</div>
-              <div style={{ fontSize: '0.875rem' }}>No students match your search query "{searchQuery}"</div>
+        {/* View Mode Toggle */}
+        {results.length > 0 && (
+          <div className="section-card">
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <button 
-                onClick={() => setSearchQuery('')}
-                style={{ 
-                  marginTop: '1rem',
-                  padding: '0.5rem 1rem', 
-                  background: '#1976d2', 
-                  color: 'white', 
-                  border: 'none', 
-                  borderRadius: '4px', 
-                  cursor: 'pointer', 
-                  fontWeight: 500,
-                  fontSize: '0.875rem'
-                }}
+                onClick={() => setViewMode('subject')} 
+                className={`tab-btn ${viewMode === 'subject' ? 'active' : ''}`}
+                style={{ border: 'none', background: viewMode === 'subject' ? 'var(--primary-color)' : '#eee', color: viewMode === 'subject' ? 'white' : '#666', borderRadius: '4px' }}
               >
-                Clear Search
+                Subject-wise View
               </button>
-            </div>
-          )}
-
-          {/* No data message */}
-          {!loading && results.length === 0 && (
-            <div style={{ background: 'white', padding: '3rem', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', textAlign: 'center', color: '#757575' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📊</div>
-              <div style={{ fontSize: '1.125rem', fontWeight: 500, marginBottom: '0.5rem' }}>No Results Available</div>
-              <div style={{ fontSize: '0.875rem' }}>Select a batch and semester above, then click "Fetch Results" to view detailed analytics</div>
-            </div>
-          )}
-
-          {/* Subject Detail Modal */}
-          {showSubjectModal && selectedSubject && (
-            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }} onClick={() => setShowSubjectModal(false)}>
-              <div style={{ background: 'white', borderRadius: '8px', maxWidth: '1200px', width: '100%', maxHeight: '90vh', overflow: 'auto' }} onClick={(e) => e.stopPropagation()}>
-                <div style={{ padding: '1.5rem', borderBottom: '1px solid #e0e0e0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: 'white', zIndex: 1 }}>
-                  <div>
-                    <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: '#212121' }}>{selectedSubject.name}</h2>
-                    <div style={{ fontSize: '0.875rem', color: '#616161', marginTop: '0.25rem' }}>{selectedSubject.code}</div>
-                  </div>
-                  <button onClick={() => setShowSubjectModal(false)} style={{ padding: '0.5rem 1rem', background: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 500 }}>Close</button>
+              <button 
+                onClick={() => setViewMode('student')} 
+                className={`tab-btn ${viewMode === 'student' ? 'active' : ''}`}
+                style={{ border: 'none', background: viewMode === 'student' ? 'var(--primary-color)' : '#eee', color: viewMode === 'student' ? 'white' : '#666', borderRadius: '4px' }}
+              >
+                Student-wise View
+              </button>
+              
+              {viewMode === 'student' && (
+                <div className="search-box" style={{ marginLeft: 'auto' }}>
+                  <input 
+                    type="text" 
+                    className="search-input"
+                    placeholder="Search by USN or Name..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                  {searchQuery && (
+                    <button 
+                      className="clear-search"
+                      onClick={() => setSearchQuery('')}
+                    >
+                      ×
+                    </button>
+                  )}
                 </div>
-                
-                <div style={{ padding: '1.5rem' }}>
-                  {/* Statistics Cards */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-                    <div style={{ background: '#e3f2fd', padding: '1rem', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '0.75rem', color: '#1976d2', fontWeight: 500, marginBottom: '0.25rem' }}>Total Students</div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1565c0' }}>{selectedSubject.statistics?.totalStudents || 0}</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Subject-wise Statistics */}
+        {viewMode === 'subject' && subjectStats.length > 0 && (
+          <div className="section-card">
+            <h3 className="section-title">Subject-wise Performance</h3>
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Code</th>
+                    <th>Subject Name</th>
+                    <th>Students</th>
+                    <th>Passed</th>
+                    <th>Pass %</th>
+                    <th>Avg</th>
+                    <th>Highest</th>
+                    <th>Lowest</th>
+                    <th style={{ textAlign: 'center' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {subjectStats.map(s => (
+                    <tr 
+                      key={s.subject_code} 
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => handleSubjectClick(s.subject_code, s.subject_name)}
+                    >
+                      <td style={{ fontFamily: 'monospace', fontWeight: 600 }}>{s.subject_code}</td>
+                      <td>{s.subject_name}</td>
+                      <td>{s.total_students}</td>
+                      <td style={{ color: '#4caf50', fontWeight: 600 }}>{s.passed_count}</td>
+                      <td>
+                        <span style={{ display: 'inline-block', padding: '0.25rem 0.5rem', borderRadius: '4px', background: s.pass_percentage >= 75 ? '#4caf50' : s.pass_percentage >= 50 ? '#ff9800' : '#f44336', color: 'white', fontWeight: 600, fontSize: '0.75rem' }}>
+                          {s.pass_percentage ? parseFloat(s.pass_percentage.toString()).toFixed(1) : '0'}%
+                        </span>
+                      </td>
+                      <td>{s.average_marks ? parseFloat(s.average_marks.toString()).toFixed(1) : '-'}</td>
+                      <td style={{ color: '#4caf50', fontWeight: 600 }}>{s.highest_marks}</td>
+                      <td>{s.lowest_marks}</td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            exportSubjectWise(s.subject_code, s.subject_name);
+                          }}
+                          className="action-btn"
+                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', width: 'auto', display: 'inline-flex' }}
+                        >
+                          Export
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Student-wise Results */}
+        {viewMode === 'student' && studentList.length > 0 && (
+          <div className="section-card">
+            <div className="section-title">
+              <span>Student-wise Results</span>
+              <div style={{ fontSize: '0.875rem', color: '#616161' }}>
+                Showing {studentList.length} of {allStudents.length} students
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {studentList.map((student: any) => (
+                <div key={student.usn} style={{ padding: '1rem', border: '1px solid #e0e0e0', borderRadius: '6px', background: '#fafafa' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                    <div>
+                      <div style={{ fontSize: '1rem', fontWeight: 600, color: '#212121' }}>{student.name}</div>
+                      <div style={{ fontSize: '0.875rem', color: '#616161', fontFamily: 'monospace' }}>{student.usn} | Section: {student.section}</div>
                     </div>
-                    <div style={{ background: '#e8f5e9', padding: '1rem', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '0.75rem', color: '#388e3c', fontWeight: 500, marginBottom: '0.25rem' }}>Passed</div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#2e7d32' }}>{selectedSubject.statistics?.passedStudents || 0}</div>
-                    </div>
-                    <div style={{ background: '#ffebee', padding: '1rem', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '0.75rem', color: '#d32f2f', fontWeight: 500, marginBottom: '0.25rem' }}>Failed</div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#c62828' }}>{selectedSubject.statistics?.failedStudents || 0}</div>
-                    </div>
-                    <div style={{ background: '#fff3e0', padding: '1rem', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '0.75rem', color: '#f57c00', fontWeight: 500, marginBottom: '0.25rem' }}>Pass %</div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ef6c00' }}>{selectedSubject.statistics?.passPercentage || 0}%</div>
-                    </div>
-                    <div style={{ background: '#f3e5f5', padding: '1rem', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '0.75rem', color: '#7b1fa2', fontWeight: 500, marginBottom: '0.25rem' }}>Average</div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#6a1b9a' }}>{selectedSubject.statistics?.avgMarks || 0}</div>
-                    </div>
-                    <div style={{ background: '#e0f2f1', padding: '1rem', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '0.75rem', color: '#00796b', fontWeight: 500, marginBottom: '0.25rem' }}>Highest</div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#00695c' }}>{selectedSubject.statistics?.highestMarks || 0}</div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '1.125rem', fontWeight: 700, color: '#4caf50' }}>
+                        SGPA: {student.sgpa ? parseFloat(student.sgpa.toString()).toFixed(2) : '-'}
+                      </div>
+                      <div style={{ fontSize: '0.875rem', color: '#616161' }}>
+                        {student.percentage ? parseFloat(student.percentage.toString()).toFixed(1) : '-'}% | Grade: {student.class_grade} | Backlogs: {student.backlog_count || 0}
+                      </div>
                     </div>
                   </div>
-
-                  {/* Student Results Table */}
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                      <thead style={{ background: '#f5f5f5', position: 'sticky', top: 0 }}>
+                  
+                  <div className="table-container">
+                    <table style={{ fontSize: '0.85rem' }}>
+                      <thead>
                         <tr>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>USN</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Name</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Section</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Internal</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>External</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Total</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Grade</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Status</th>
+                          <th>Subject</th>
+                          <th style={{ textAlign: 'center' }}>Internal</th>
+                          <th style={{ textAlign: 'center' }}>External</th>
+                          <th style={{ textAlign: 'center' }}>Total</th>
+                          <th style={{ textAlign: 'center' }}>Grade</th>
+                          <th style={{ textAlign: 'center' }}>Status</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {subjectStudents.map((student: any) => (
-                          <tr key={student.usn} style={{ borderBottom: '1px solid #eeeeee' }}>
-                            <td style={{ padding: '0.75rem', fontFamily: 'monospace', fontWeight: 600, color: '#424242' }}>{student.usn}</td>
-                            <td style={{ padding: '0.75rem', color: '#212121' }}>{student.name}</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center', color: '#616161' }}>{student.section}</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center', color: '#616161' }}>{student.internal_marks}</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center', color: '#616161' }}>{student.external_marks}</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: (student.external_marks >= 18 && student.total_marks >= 40) ? '#4caf50' : '#f44336' }}>{student.total_marks}</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                        {student.subjects.map((sub: StudentResult, idx: number) => (
+                          <tr key={idx}>
+                            <td>{sub.subject_code} - {sub.subject_name}</td>
+                            <td style={{ textAlign: 'center' }}>{sub.internal_marks}</td>
+                            <td style={{ textAlign: 'center' }}>{sub.external_marks}</td>
+                            <td style={{ textAlign: 'center', fontWeight: 600 }}>{sub.total_marks}</td>
+                            <td style={{ textAlign: 'center' }}>
                               <span style={{ display: 'inline-block', padding: '0.25rem 0.5rem', borderRadius: '4px', background: '#e3f2fd', color: '#1976d2', fontWeight: 600, fontSize: '0.75rem' }}>
-                                {student.letter_grade || '-'}
+                                {sub.letter_grade}
                               </span>
                             </td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                              <span style={{ display: 'inline-block', padding: '0.25rem 0.5rem', borderRadius: '4px', background: student.pass_status === 'PASS' ? '#4caf50' : '#f44336', color: 'white', fontWeight: 600, fontSize: '0.75rem' }}>
-                                {student.pass_status}
+                            <td style={{ textAlign: 'center' }}>
+                              <span style={{ display: 'inline-block', padding: '0.25rem 0.5rem', borderRadius: '4px', background: (sub.result_status === 'PASS' || sub.result_status === 'P') ? '#4caf50' : '#f44336', color: 'white', fontWeight: 600, fontSize: '0.75rem' }}>
+                                {sub.result_status === 'P' ? 'PASS' : sub.result_status === 'F' ? 'FAIL' : sub.result_status}
                               </span>
                             </td>
                           </tr>
@@ -769,11 +609,119 @@ const HODDetailedAnalytics = () => {
                     </table>
                   </div>
                 </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* No students found after search */}
+        {viewMode === 'student' && results.length > 0 && studentList.length === 0 && (
+          <div className="empty-state">
+            <div style={{ fontSize: '1.125rem', fontWeight: 500, marginBottom: '0.5rem' }}>No Students Found</div>
+            <div>No students match your search query "{searchQuery}"</div>
+            <button 
+              onClick={() => setSearchQuery('')}
+              className="action-btn"
+              style={{ marginTop: '1rem', width: 'auto', display: 'inline-flex' }}
+            >
+              Clear Search
+            </button>
+          </div>
+        )}
+
+        {/* No data message */}
+        {!loading && results.length === 0 && (
+          <div className="empty-state">
+            <div style={{ fontSize: '1.125rem', fontWeight: 500, marginBottom: '0.5rem' }}>No Results Available</div>
+            <div>Select a batch and semester above, then click "Fetch Results" to view detailed analytics</div>
+          </div>
+        )}
+
+        {/* Subject Detail Modal */}
+        {showSubjectModal && selectedSubject && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }} onClick={() => setShowSubjectModal(false)}>
+            <div style={{ background: 'white', borderRadius: '8px', maxWidth: '1200px', width: '100%', maxHeight: '90vh', overflow: 'auto' }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ padding: '1.5rem', borderBottom: '1px solid #e0e0e0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: 'white', zIndex: 1 }}>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: '#212121' }}>{selectedSubject.name}</h2>
+                  <div style={{ fontSize: '0.875rem', color: '#616161', marginTop: '0.25rem' }}>{selectedSubject.code}</div>
+                </div>
+                <button onClick={() => setShowSubjectModal(false)} style={{ padding: '0.5rem 1rem', background: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 500 }}>Close</button>
+              </div>
+              
+              <div style={{ padding: '1.5rem' }}>
+                {/* Statistics Cards */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+                  <div style={{ background: '#e3f2fd', padding: '1rem', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#1976d2', fontWeight: 500, marginBottom: '0.25rem' }}>Total Students</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1565c0' }}>{selectedSubject.statistics?.totalStudents || 0}</div>
+                  </div>
+                  <div style={{ background: '#e8f5e9', padding: '1rem', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#388e3c', fontWeight: 500, marginBottom: '0.25rem' }}>Passed</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#2e7d32' }}>{selectedSubject.statistics?.passedStudents || 0}</div>
+                  </div>
+                  <div style={{ background: '#ffebee', padding: '1rem', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#d32f2f', fontWeight: 500, marginBottom: '0.25rem' }}>Failed</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#c62828' }}>{selectedSubject.statistics?.failedStudents || 0}</div>
+                  </div>
+                  <div style={{ background: '#fff3e0', padding: '1rem', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#f57c00', fontWeight: 500, marginBottom: '0.25rem' }}>Pass %</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ef6c00' }}>{selectedSubject.statistics?.passPercentage || 0}%</div>
+                  </div>
+                  <div style={{ background: '#f3e5f5', padding: '1rem', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#7b1fa2', fontWeight: 500, marginBottom: '0.25rem' }}>Average</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#6a1b9a' }}>{selectedSubject.statistics?.avgMarks || 0}</div>
+                  </div>
+                  <div style={{ background: '#e0f2f1', padding: '1rem', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#00796b', fontWeight: 500, marginBottom: '0.25rem' }}>Highest</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#00695c' }}>{selectedSubject.statistics?.highestMarks || 0}</div>
+                  </div>
+                </div>
+
+                {/* Student Results Table */}
+                <div className="table-container">
+                  <table>
+                    <thead style={{ position: 'sticky', top: 0 }}>
+                      <tr>
+                        <th>USN</th>
+                        <th>Name</th>
+                        <th>Section</th>
+                        <th style={{ textAlign: 'center' }}>Internal</th>
+                        <th style={{ textAlign: 'center' }}>External</th>
+                        <th style={{ textAlign: 'center' }}>Total</th>
+                        <th style={{ textAlign: 'center' }}>Grade</th>
+                        <th style={{ textAlign: 'center' }}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {subjectStudents.map((student: any) => (
+                        <tr key={student.usn}>
+                          <td style={{ fontFamily: 'monospace', fontWeight: 600 }}>{student.usn}</td>
+                          <td>{student.name}</td>
+                          <td style={{ textAlign: 'center' }}>{student.section}</td>
+                          <td style={{ textAlign: 'center' }}>{student.internal_marks}</td>
+                          <td style={{ textAlign: 'center' }}>{student.external_marks}</td>
+                          <td style={{ textAlign: 'center', fontWeight: 600, color: (student.external_marks >= 18 && student.total_marks >= 40) ? '#4caf50' : '#f44336' }}>{student.total_marks}</td>
+                          <td style={{ textAlign: 'center' }}>
+                            <span style={{ display: 'inline-block', padding: '0.25rem 0.5rem', borderRadius: '4px', background: '#e3f2fd', color: '#1976d2', fontWeight: 600, fontSize: '0.75rem' }}>
+                              {student.letter_grade || '-'}
+                            </span>
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            <span style={{ display: 'inline-block', padding: '0.25rem 0.5rem', borderRadius: '4px', background: student.pass_status === 'PASS' ? '#4caf50' : '#f44336', color: 'white', fontWeight: 600, fontSize: '0.75rem' }}>
+                              {student.pass_status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
-          )}
-          
-        </div>
+          </div>
+        )}
+        
       </div>
     </div>
   );

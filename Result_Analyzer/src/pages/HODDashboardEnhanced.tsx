@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/apiClient';
 import * as XLSX from 'xlsx';
+import '../styles/HODDashboard.css';
 
 type TopPerformer = {
   usn: string;
@@ -45,33 +46,6 @@ type BatchStat = {
   second_class_count?: number;
 };
 
-type BacklogStat = {
-  batch: number;
-  total_students: number;
-  students_with_backlogs: number;
-  total_backlogs: number;
-  avg_backlogs_per_student: number;
-  max_backlogs: number;
-};
-
-type SGPADistribution = {
-  sgpa_range: string;
-  student_count: number;
-  batch: number;
-};
-
-type BatchPerformance = {
-  batch: number;
-  total_students: number;
-  average_cgpa: number;
-  average_sgpa: number;
-  highest_cgpa: number;
-  lowest_cgpa: number;
-  distinction_count: number;
-  students_with_backlogs: number;
-  total_backlogs: number;
-};
-
 const HODDashboardEnhanced = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -93,9 +67,9 @@ const HODDashboardEnhanced = () => {
   
   // Analytics State
   const [batchStats, setBatchStats] = useState<BatchStat[]>([]);
-  const [backlogStats, setBacklogStats] = useState<BacklogStat[]>([]);
-  const [sgpaDistribution, setSgpaDistribution] = useState<SGPADistribution[]>([]);
-  const [batchPerformance, setBatchPerformance] = useState<BatchPerformance[]>([]);
+  // const [backlogStats, setBacklogStats] = useState<BacklogStat[]>([]);
+  // const [sgpaDistribution, setSgpaDistribution] = useState<SGPADistribution[]>([]);
+  // const [batchPerformance, setBatchPerformance] = useState<BatchPerformance[]>([]);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   
   const batches = [2022, 2023, 2024];
@@ -128,15 +102,8 @@ const HODDashboardEnhanced = () => {
         endpoint = `/api/hod/top-performers/semester-marks?${params.toString()}`;
       }
       
-      console.log('Fetching toppers from:', endpoint);
       const resp = await apiClient.get(endpoint);
-      console.log('Toppers response:', resp.data);
       const fetchedToppers = resp.data?.data?.toppers || [];
-      console.log('Fetched toppers count:', fetchedToppers.length);
-      if (fetchedToppers.length > 0) {
-        console.log('First topper sample:', fetchedToppers[0]);
-        console.log('CGPA value:', fetchedToppers[0].cgpa, 'Type:', typeof fetchedToppers[0].cgpa);
-      }
       setToppers(Array.isArray(fetchedToppers) ? fetchedToppers : []);
     } catch (err: any) {
       console.error('Failed to load toppers:', err?.response?.data || err.message);
@@ -151,17 +118,9 @@ const HODDashboardEnhanced = () => {
     try {
       setLoadingAnalytics(true);
       
-      const [statsResp, backlogResp, distResp, perfResp] = await Promise.all([
-        apiClient.get('/api/hod/batch-statistics'),
-        apiClient.get('/api/hod/backlog-statistics'),
-        apiClient.get('/api/hod/sgpa-distribution'),
-        apiClient.get('/api/hod/batch-performance')
-      ]);
+      const statsResp = await apiClient.get('/api/hod/batch-statistics');
       
       setBatchStats(statsResp.data?.data?.batchStats || []);
-      setBacklogStats(backlogResp.data?.data?.backlogStats || []);
-      setSgpaDistribution(distResp.data?.data?.distribution || []);
-      setBatchPerformance(perfResp.data?.data?.performance || []);
     } catch (err: any) {
       console.error('Failed to load analytics:', err?.response?.data || err.message);
     } finally {
@@ -261,281 +220,301 @@ const HODDashboardEnhanced = () => {
   }, [tab, topperType, selectedBatch, selectedSection, selectedSemester, selectedLimit]);
 
   return (
-    <div style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', backgroundColor: '#f5f5f5', overflow: 'hidden', fontFamily: 'Roboto, sans-serif' }}>
+    <div className="hod-dashboard">
       {/* Header */}
-      <div style={{ background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)', color: 'white', padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600 }}>HOD Dashboard</h1>
-          <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', opacity: 0.9 }}>Welcome, {user?.name || user?.email}</p>
+      <header className="dashboard-header">
+        <div className="header-content">
+          <div className="header-left">
+            <img src="/Logo.jpeg" alt="Logo" className="admin-logo" />
+            <div className="header-titles">
+              <h1>HOD Dashboard</h1>
+              <p className="header-subtitle">Welcome, {user?.name || user?.email}</p>
+            </div>
+          </div>
+          <div className="header-right">
+            <button onClick={() => navigate('/hod/detailed-analytics')} className="logout-btn">
+              Detailed Analytics
+            </button>
+            <button onClick={logout} className="logout-btn">
+              Logout
+            </button>
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <button onClick={() => navigate('/hod/detailed-analytics')} style={{ padding: '0.5rem 1.25rem', background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.4)', borderRadius: '6px', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            📊 View Detailed Analytics
-          </button>
-          <button onClick={logout} style={{ padding: '0.5rem 1.25rem', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '6px', color: 'white', cursor: 'pointer', fontWeight: 500, fontSize: '0.875rem' }}>
-            Logout
-          </button>
-        </div>
-      </div>
+      </header>
 
       {/* Navigation Tabs */}
-      <div style={{ background: 'white', borderBottom: '1px solid #e0e0e0', padding: '0 2rem', display: 'flex', gap: '0.5rem' }}>
-        <button onClick={() => setTab('toppers')} style={{ padding: '1rem 1.5rem', background: 'transparent', border: 'none', borderBottom: tab === 'toppers' ? '3px solid #1976d2' : '3px solid transparent', color: tab === 'toppers' ? '#1976d2' : '#616161', cursor: 'pointer', fontWeight: tab === 'toppers' ? 600 : 400, fontSize: '0.875rem' }}>
+      <div className="nav-tabs">
+        <button 
+          className={`tab-btn ${tab === 'toppers' ? 'active' : ''}`}
+          onClick={() => setTab('toppers')}
+        >
           Top Performers
         </button>
-        <button onClick={() => setTab('statistics')} style={{ padding: '1rem 1.5rem', background: 'transparent', border: 'none', borderBottom: tab === 'statistics' ? '3px solid #1976d2' : '3px solid transparent', color: tab === 'statistics' ? '#1976d2' : '#616161', cursor: 'pointer', fontWeight: tab === 'statistics' ? 600 : 400, fontSize: '0.875rem' }}>
+        <button 
+          className={`tab-btn ${tab === 'statistics' ? 'active' : ''}`}
+          onClick={() => setTab('statistics')}
+        >
           Batch Statistics
         </button>
       </div>
 
       {/* Content Area */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '2rem' }}>
-        <div style={{ maxWidth: '1600px', margin: '0 auto' }}>
-          
-          {/* TOP PERFORMERS TAB */}
-          {tab === 'toppers' && (
-            <div>
-              {/* Filters */}
-              <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', marginBottom: '1.5rem' }}>
-                <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: 600, color: '#212121' }}>Filters & Options</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
-                  {/* Topper Type */}
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: '#616161' }}>Topper Type</label>
-                    <select value={topperType} onChange={(e) => setTopperType(e.target.value as any)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #e0e0e0', borderRadius: '4px', fontSize: '0.875rem' }}>
-                      <option value="cgpa">Overall CGPA</option>
-                      <option value="sgpa">Semester SGPA</option>
-                      <option value="semester-total">Semester Total Marks</option>
-                    </select>
-                  </div>
-                  
-                  {/* Semester (only for SGPA and semester total) */}
-                  {(topperType === 'sgpa' || topperType === 'semester-total') && (
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: '#616161' }}>Semester</label>
-                      <select value={selectedSemester} onChange={(e) => setSelectedSemester(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #e0e0e0', borderRadius: '4px', fontSize: '0.875rem' }}>
-                        {semesters.map(s => <option key={s} value={s}>Semester {s}</option>)}
-                      </select>
-                    </div>
-                  )}
-                  
-                  {/* Batch */}
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: '#616161' }}>Batch</label>
-                    <select value={selectedBatch} onChange={(e) => setSelectedBatch(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #e0e0e0', borderRadius: '4px', fontSize: '0.875rem' }}>
-                      {batches.map(b => <option key={b} value={b}>{b}</option>)}
-                    </select>
-                  </div>
-                  
-                  {/* Section (only for SGPA) */}
-                  {topperType === 'sgpa' && (
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: '#616161' }}>Section</label>
-                      <select value={selectedSection} onChange={(e) => setSelectedSection(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #e0e0e0', borderRadius: '4px', fontSize: '0.875rem' }}>
-                        <option value="all">All Sections</option>
-                        {sections.map(s => <option key={s} value={s}>Section {s}</option>)}
-                      </select>
-                    </div>
-                  )}
-                  
-                  {/* Limit */}
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: '#616161' }}>Show Top</label>
-                    <select value={selectedLimit} onChange={(e) => setSelectedLimit(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #e0e0e0', borderRadius: '4px', fontSize: '0.875rem' }}>
-                      {limits.map(l => <option key={l} value={l}>{l === 'all' ? 'All Students' : `Top ${l}`}</option>)}
-                    </select>
-                  </div>
-                  
-                  {/* Export Button */}
-                  <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                    <button onClick={exportToExcel} style={{ width: '100%', padding: '0.5rem', background: '#4caf50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 500, fontSize: '0.875rem' }}>
-                      Export to Excel
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Toppers Table */}
-              <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                  <h2 style={{ marginTop: 0, marginBottom: 0, fontSize: '1.25rem', fontWeight: 600, color: '#212121' }}>
-                    {topperType === 'cgpa' ? 'Top Performers by Overall CGPA' : 
-                     topperType === 'sgpa' ? `Top Performers by SGPA - Semester ${selectedSemester}` :
-                     `Top Performers by Total Marks - Semester ${selectedSemester}`}
-                  </h2>
-                  
-                  {/* Search Box */}
-                  <div style={{ position: 'relative', width: '300px' }}>
-                    <input 
-                      type="text" 
-                      placeholder="Search by USN or Name..." 
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      style={{ 
-                        width: '100%', 
-                        padding: '0.5rem 2.5rem 0.5rem 0.75rem', 
-                        border: '1px solid #e0e0e0', 
-                        borderRadius: '6px', 
-                        fontSize: '0.875rem',
-                        outline: 'none'
-                      }}
-                      onFocus={(e) => e.target.style.borderColor = '#1976d2'}
-                      onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
-                    />
-                    {searchQuery && (
-                      <button 
-                        onClick={() => setSearchQuery('')}
-                        style={{ 
-                          position: 'absolute', 
-                          right: '0.5rem', 
-                          top: '50%', 
-                          transform: 'translateY(-50%)', 
-                          background: 'none', 
-                          border: 'none', 
-                          cursor: 'pointer',
-                          fontSize: '1.25rem',
-                          color: '#757575'
-                        }}
-                      >
-                        ×
-                      </button>
-                    )}
-                  </div>
+      <div className="dashboard-content">
+        
+        {/* TOP PERFORMERS TAB */}
+        {tab === 'toppers' && (
+          <div>
+            {/* Filters */}
+            <div className="section-card">
+              <h3 className="section-title">Filters & Options</h3>
+              <div className="form-grid">
+                {/* Topper Type */}
+                <div className="form-group">
+                  <label>Topper Type</label>
+                  <select 
+                    className="form-select"
+                    value={topperType} 
+                    onChange={(e) => setTopperType(e.target.value as any)}
+                  >
+                    <option value="cgpa">Overall CGPA</option>
+                    <option value="sgpa">Semester SGPA</option>
+                    <option value="semester-total">Semester Total Marks</option>
+                  </select>
                 </div>
                 
-                {loadingToppers ? (
-                  <div style={{ textAlign: 'center', padding: '3rem', color: '#757575' }}>Loading toppers...</div>
-                ) : (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                      <thead style={{ background: '#f5f5f5' }}>
-                        <tr>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Rank</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>USN</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Name</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Batch</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Section</th>
-                          {topperType === 'cgpa' && <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>CGPA</th>}
-                          {topperType === 'sgpa' && <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>SGPA</th>}
-                          {topperType === 'sgpa' && <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Percentage</th>}
-                          {topperType === 'semester-total' && <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Total Marks</th>}
-                          {topperType === 'semester-total' && <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Percentage</th>}
-                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Backlogs</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredToppers.length === 0 && !loadingToppers && (
-                          <tr><td colSpan={10} style={{ padding: '2rem', textAlign: 'center', color: '#757575' }}>
-                            {searchQuery ? `No students match your search "${searchQuery}"` : 'No toppers found'}
-                          </td></tr>
-                        )}
-                        {filteredToppers.map((s, i) => (
-                          <tr key={s.usn || i} style={{ borderBottom: '1px solid #eeeeee', background: i % 2 === 0 ? 'white' : '#fefaf6' }}>
-                            <td style={{ padding: '0.75rem' }}>
-                              <span style={{ fontWeight: 600, fontSize: '0.875rem', color: i < 3 ? '#1976d2' : '#616161' }}>{i + 1}</span>
-                            </td>
-                            <td style={{ padding: '0.75rem', color: '#424242', fontFamily: 'monospace' }}>{s.usn}</td>
-                            <td style={{ padding: '0.75rem', color: '#212121', fontWeight: 500 }}>{s.name}</td>
-                            <td style={{ padding: '0.75rem', color: '#616161' }}>{s.batch}</td>
-                            <td style={{ padding: '0.75rem', color: '#616161' }}>{s.section || '-'}</td>
-                            {topperType === 'cgpa' && (
-                              <td style={{ padding: '0.75rem', color: '#212121', fontWeight: 600, fontSize: '0.9rem' }}>
-                                {s.cgpa ? parseFloat(s.cgpa.toString()).toFixed(2) : '-'}
-                              </td>
-                            )}
-                            {topperType === 'sgpa' && (
-                              <>
-                                <td style={{ padding: '0.75rem', color: '#212121', fontWeight: 600, fontSize: '0.9rem' }}>
-                                  {s.sgpa ? parseFloat(s.sgpa.toString()).toFixed(2) : '-'}
-                                </td>
-                                <td style={{ padding: '0.75rem', color: '#424242' }}>
-                                  {s.percentage ? parseFloat(s.percentage.toString()).toFixed(2) + '%' : '-'}
-                                </td>
-                              </>
-                            )}
-                            {topperType === 'semester-total' && (
-                              <>
-                                <td style={{ padding: '0.75rem', color: '#424242', fontWeight: 500 }}>
-                                  {s.cumulative_marks || s.total_marks_obtained || '-'} / {s.cumulative_maximum || s.total_marks_maximum || '-'}
-                                </td>
-                                <td style={{ padding: '0.75rem', color: '#424242' }}>
-                                  {s.overall_percentage ? parseFloat(s.overall_percentage.toString()).toFixed(2) + '%' : 
-                                   (s.percentage ? parseFloat(s.percentage.toString()).toFixed(2) + '%' : '-')}
-                                </td>
-                              </>
-                            )}
-                            <td style={{ padding: '0.75rem', color: (s.backlog_count || s.total_backlogs || 0) > 0 ? '#d32f2f' : '#388e3c', fontWeight: 600 }}>
-                              {s.backlog_count || s.total_backlogs || 0}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                {/* Semester (only for SGPA and semester total) */}
+                {(topperType === 'sgpa' || topperType === 'semester-total') && (
+                  <div className="form-group">
+                    <label>Semester</label>
+                    <select 
+                      className="form-select"
+                      value={selectedSemester} 
+                      onChange={(e) => setSelectedSemester(e.target.value)}
+                    >
+                      {semesters.map(s => <option key={s} value={s}>Semester {s}</option>)}
+                    </select>
                   </div>
                 )}
-              </div>
-            </div>
-          )}
-
-          {/* STATISTICS TAB */}
-          {tab === 'statistics' && (
-            <div>
-              <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', marginBottom: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                  <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: '#212121' }}>Detailed Batch Statistics</h2>
-                  <button onClick={exportToExcel} style={{ padding: '0.5rem 1rem', background: '#4caf50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 500, fontSize: '0.875rem' }}>
+                
+                {/* Batch */}
+                <div className="form-group">
+                  <label>Batch</label>
+                  <select 
+                    className="form-select"
+                    value={selectedBatch} 
+                    onChange={(e) => setSelectedBatch(e.target.value)}
+                  >
+                    {batches.map(b => <option key={b} value={b}>{b}</option>)}
+                  </select>
+                </div>
+                
+                {/* Section (only for SGPA) */}
+                {topperType === 'sgpa' && (
+                  <div className="form-group">
+                    <label>Section</label>
+                    <select 
+                      className="form-select"
+                      value={selectedSection} 
+                      onChange={(e) => setSelectedSection(e.target.value)}
+                    >
+                      <option value="all">All Sections</option>
+                      {sections.map(s => <option key={s} value={s}>Section {s}</option>)}
+                    </select>
+                  </div>
+                )}
+                
+                {/* Limit */}
+                <div className="form-group">
+                  <label>Show Top</label>
+                  <select 
+                    className="form-select"
+                    value={selectedLimit} 
+                    onChange={(e) => setSelectedLimit(e.target.value)}
+                  >
+                    {limits.map(l => <option key={l} value={l}>{l === 'all' ? 'All Students' : `Top ${l}`}</option>)}
+                  </select>
+                </div>
+                
+                {/* Export Button */}
+                <div className="form-group">
+                  <button className="export-btn" onClick={exportToExcel}>
                     Export to Excel
                   </button>
                 </div>
-                
-                {loadingAnalytics ? (
-                  <div style={{ textAlign: 'center', padding: '3rem', color: '#757575' }}>Loading statistics...</div>
-                ) : (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                      <thead style={{ background: '#f5f5f5' }}>
-                        <tr>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Batch</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Students</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Sections</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Avg CGPA</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Highest</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Lowest</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>Distinction</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#424242', borderBottom: '2px solid #e0e0e0' }}>First Class</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {batchStats.length === 0 && (
-                          <tr><td colSpan={8} style={{ padding: '2rem', textAlign: 'center', color: '#757575' }}>No statistics available</td></tr>
-                        )}
-                        {batchStats.map((b, idx) => (
-                          <tr key={b.batch} style={{ borderBottom: '1px solid #eeeeee', background: idx % 2 === 0 ? 'white' : '#fefaf6' }}>
-                            <td style={{ padding: '0.75rem', color: '#1976d2', fontWeight: 600 }}>{b.batch}</td>
-                            <td style={{ padding: '0.75rem', color: '#424242' }}>{b.total_students}</td>
-                            <td style={{ padding: '0.75rem', color: '#424242' }}>{b.total_sections}</td>
-                            <td style={{ padding: '0.75rem', color: '#212121', fontWeight: 600 }}>
-                              {b.average_cgpa ? parseFloat(b.average_cgpa.toString()).toFixed(2) : '-'}
-                            </td>
-                            <td style={{ padding: '0.75rem', color: '#212121', fontWeight: 600 }}>
-                              {b.highest_cgpa ? parseFloat(b.highest_cgpa.toString()).toFixed(2) : '-'}
-                            </td>
-                            <td style={{ padding: '0.75rem', color: '#616161' }}>
-                              {b.lowest_cgpa ? parseFloat(b.lowest_cgpa.toString()).toFixed(2) : '-'}
-                            </td>
-                            <td style={{ padding: '0.75rem', color: '#424242' }}>{b.distinction_count || 0}</td>
-                            <td style={{ padding: '0.75rem', color: '#424242' }}>{b.first_class_count || 0}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
               </div>
             </div>
-          )}
-          
-        </div>
+
+            {/* Toppers Table */}
+            <div className="section-card">
+              <div className="section-title">
+                <span>
+                  {topperType === 'cgpa' ? 'Top Performers by Overall CGPA' : 
+                   topperType === 'sgpa' ? `Top Performers by SGPA - Semester ${selectedSemester}` :
+                   `Top Performers by Total Marks - Semester ${selectedSemester}`}
+                </span>
+                
+                {/* Search Box */}
+                <div className="search-box">
+                  <input 
+                    type="text" 
+                    className="search-input"
+                    placeholder="Search by USN or Name..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                  {searchQuery && (
+                    <button 
+                      className="clear-search"
+                      onClick={() => setSearchQuery('')}
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              </div>
+              
+              {loadingToppers ? (
+                <div className="loading-container">
+                  <div className="spinner"></div>
+                  <div>Loading toppers...</div>
+                </div>
+              ) : (
+                <div className="table-container">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Rank</th>
+                        <th>USN</th>
+                        <th>Name</th>
+                        <th>Batch</th>
+                        <th>Section</th>
+                        {topperType === 'cgpa' && <th>CGPA</th>}
+                        {topperType === 'sgpa' && <th>SGPA</th>}
+                        {topperType === 'sgpa' && <th>Percentage</th>}
+                        {topperType === 'semester-total' && <th>Total Marks</th>}
+                        {topperType === 'semester-total' && <th>Percentage</th>}
+                        <th>Backlogs</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredToppers.length === 0 && !loadingToppers && (
+                        <tr><td colSpan={10} className="empty-state">
+                          {searchQuery ? `No students match your search "${searchQuery}"` : 'No toppers found'}
+                        </td></tr>
+                      )}
+                      {filteredToppers.map((s, i) => (
+                        <tr key={s.usn || i}>
+                          <td>
+                            <span className={`rank-badge ${i < 3 ? `rank-${i+1}` : ''}`}>
+                              {i + 1}
+                            </span>
+                          </td>
+                          <td style={{ fontFamily: 'monospace' }}>{s.usn}</td>
+                          <td style={{ fontWeight: 500 }}>{s.name}</td>
+                          <td>{s.batch}</td>
+                          <td>{s.section || '-'}</td>
+                          {topperType === 'cgpa' && (
+                            <td style={{ fontWeight: 600 }}>
+                              {s.cgpa ? parseFloat(s.cgpa.toString()).toFixed(2) : '-'}
+                            </td>
+                          )}
+                          {topperType === 'sgpa' && (
+                            <>
+                              <td style={{ fontWeight: 600 }}>
+                                {s.sgpa ? parseFloat(s.sgpa.toString()).toFixed(2) : '-'}
+                              </td>
+                              <td>
+                                {s.percentage ? parseFloat(s.percentage.toString()).toFixed(2) + '%' : '-'}
+                              </td>
+                            </>
+                          )}
+                          {topperType === 'semester-total' && (
+                            <>
+                              <td style={{ fontWeight: 500 }}>
+                                {s.cumulative_marks || s.total_marks_obtained || '-'} / {s.cumulative_maximum || s.total_marks_maximum || '-'}
+                              </td>
+                              <td>
+                                {s.overall_percentage ? parseFloat(s.overall_percentage.toString()).toFixed(2) + '%' : 
+                                 (s.percentage ? parseFloat(s.percentage.toString()).toFixed(2) + '%' : '-')}
+                              </td>
+                            </>
+                          )}
+                          <td>
+                            <span className={`backlog-badge ${(s.backlog_count || s.total_backlogs || 0) > 0 ? 'backlog-exist' : 'backlog-none'}`}>
+                              {(s.backlog_count || s.total_backlogs || 0) > 0 ? `${s.backlog_count || s.total_backlogs} Backlogs` : 'No Backlogs'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* STATISTICS TAB */}
+        {tab === 'statistics' && (
+          <div>
+            <div className="section-card">
+              <div className="section-title">
+                <span>Detailed Batch Statistics</span>
+                <button className="export-btn" onClick={exportToExcel}>
+                  Export to Excel
+                </button>
+              </div>
+              
+              {loadingAnalytics ? (
+                <div className="loading-container">
+                  <div className="spinner"></div>
+                  <div>Loading statistics...</div>
+                </div>
+              ) : (
+                <div className="table-container">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Batch</th>
+                        <th>Students</th>
+                        <th>Sections</th>
+                        <th>Avg CGPA</th>
+                        <th>Highest</th>
+                        <th>Lowest</th>
+                        <th>Distinction</th>
+                        <th>First Class</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {batchStats.length === 0 && (
+                        <tr><td colSpan={8} className="empty-state">No statistics available</td></tr>
+                      )}
+                      {batchStats.map((b) => (
+                        <tr key={b.batch}>
+                          <td style={{ color: 'var(--primary-color)', fontWeight: 600 }}>{b.batch}</td>
+                          <td>{b.total_students}</td>
+                          <td>{b.total_sections}</td>
+                          <td style={{ fontWeight: 600 }}>
+                            {b.average_cgpa ? parseFloat(b.average_cgpa.toString()).toFixed(2) : '-'}
+                          </td>
+                          <td style={{ fontWeight: 600 }}>
+                            {b.highest_cgpa ? parseFloat(b.highest_cgpa.toString()).toFixed(2) : '-'}
+                          </td>
+                          <td>
+                            {b.lowest_cgpa ? parseFloat(b.lowest_cgpa.toString()).toFixed(2) : '-'}
+                          </td>
+                          <td>{b.distinction_count || 0}</td>
+                          <td>{b.first_class_count || 0}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        
       </div>
     </div>
   );

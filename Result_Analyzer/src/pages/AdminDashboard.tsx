@@ -299,7 +299,7 @@ const AdminDashboard: React.FC = () => {
       });
 
       if (response.success) {
-        alert(`✅ Student added successfully: ${studentFormData.usn}`);
+        alert(`Student added successfully: ${studentFormData.usn}`);
         setStudentFormData({
           usn: '',
           name: '',
@@ -330,8 +330,8 @@ const AdminDashboard: React.FC = () => {
           // Convert to JSON
           const jsonData = XLSX.utils.sheet_to_json(worksheet);
           
-          console.log('📊 Parsed Excel data (first row):', jsonData[0]);
-          console.log('📊 Available columns:', Object.keys(jsonData[0] || {}));
+          console.log(' Parsed Excel data (first row):', jsonData[0]);
+          console.log(' Available columns:', Object.keys(jsonData[0] || {}));
           
           // Map Excel columns to our format (including required discipline field)
           const students = jsonData.map((row: any) => {
@@ -369,7 +369,7 @@ const AdminDashboard: React.FC = () => {
           });
           
           if (students.length === 0) {
-            alert('❌ No valid students found in Excel file. Check that you have USN and Name columns with data.');
+            alert('No valid students found in Excel file. Check that you have USN and Name columns with data.');
             return;
           }
           
@@ -379,12 +379,12 @@ const AdminDashboard: React.FC = () => {
           
           if (response.success) {
             const { inserted, skipped, failed } = response.data;
-            alert(`✅ Import Complete!\n\n` +
-                  `✓ Added: ${inserted}\n` +
-                  `⊘ Skipped: ${skipped}\n` +
-                  `✗ Failed: ${failed}\n\n` +
+            alert(`Import Complete!\n\n` +
+                  `Added: ${inserted}\n` +
+                  `Skipped: ${skipped}\n` +
+                  `Failed: ${failed}\n\n` +
                   `Check console for details.`);
-            console.log('📊 Import Details:', response.data.details);
+            console.log('Import Details:', response.data.details);
           }
         } catch (error: any) {
           console.error('Excel parsing error:', error);
@@ -411,7 +411,7 @@ const AdminDashboard: React.FC = () => {
       });
 
       if (response.success) {
-        alert(`✅ Subject added successfully: ${subjectFormData.subjectCode}`);
+        alert(`Subject added successfully: ${subjectFormData.subjectCode}`);
         setSubjectFormData({
           subjectCode: '',
           subjectName: '',
@@ -442,7 +442,7 @@ const AdminDashboard: React.FC = () => {
           // Convert to JSON
           const jsonData = XLSX.utils.sheet_to_json(worksheet);
           
-          console.log('� Parsed Excel data:', jsonData);
+          console.log('Parsed Excel data:', jsonData);
           
           // Map Excel columns to our format (handle both formats)
           const subjects = jsonData.map((row: any) => ({
@@ -457,7 +457,7 @@ const AdminDashboard: React.FC = () => {
           console.log(`📋 Importing ${subjects.length} subjects...`);
           
           if (subjects.length === 0) {
-            alert('❌ No valid subjects found in Excel file. Check column names: Subject_Code, Subject_Name, Semester, Credits, Scheme, Is_Placeholder');
+            alert('No valid subjects found in Excel file. Check column names: Subject_Code, Subject_Name, Semester, Credits, Scheme, Is_Placeholder');
             return;
           }
           
@@ -466,12 +466,12 @@ const AdminDashboard: React.FC = () => {
           
           if (response.success) {
             const { inserted, skipped, failed } = response.data;
-            alert(`✅ Import Complete!\n\n` +
-                  `✓ Added: ${inserted}\n` +
-                  `⊘ Skipped: ${skipped}\n` +
-                  `✗ Failed: ${failed}\n\n` +
+            alert(`Import Complete!\n\n` +
+                  `Added: ${inserted}\n` +
+                  `Skipped: ${skipped}\n` +
+                  `Failed: ${failed}\n\n` +
                   `Check console for details.`);
-            console.log('📊 Import Details:', response.data.details);
+            console.log('Import Details:', response.data.details);
           }
         } catch (error: any) {
           console.error('Excel parsing error:', error);
@@ -612,19 +612,19 @@ const AdminDashboard: React.FC = () => {
   const handleStartVTUScraper = async () => {
     try {
       if (!vtuUrl.trim()) {
-        alert('❌ Please enter VTU results URL');
+        alert('Please enter VTU results URL');
         return;
       }
       if (!semester.trim()) {
-        alert('❌ Please enter semester');
+        alert('Please enter semester');
         return;
       }
       if (scrapingMode === 'single' && !singleUsn.trim()) {
-        alert('❌ Please enter USN for single mode');
+        alert('Please enter USN for single mode');
         return;
       }
       if (scrapingMode === 'batch' && !batchYear.trim()) {
-        alert('❌ Please enter batch year for batch mode');
+        alert('Please enter batch year for batch mode');
         return;
       }
 
@@ -647,7 +647,7 @@ const AdminDashboard: React.FC = () => {
       if (response.success) {
         setScraperSessionId(response.data.sessionId);
         const detectedScheme = response.data.scheme || (parseInt(batchYear) <= 2021 ? '21' : '22');
-        alert(`✅ VTU Scraper started!\nSession ID: ${response.data.sessionId}\nTotal USNs: ${response.data.totalUSNs}\nScheme: ${detectedScheme} (auto-detected)`);
+        alert(`VTU Scraper started!\nSession ID: ${response.data.sessionId}\nTotal USNs: ${response.data.totalUSNs}\nScheme: ${detectedScheme} (auto-detected)`);
       }
     } catch (error: any) {
       console.error('VTU scraper error:', error);
@@ -659,15 +659,15 @@ const AdminDashboard: React.FC = () => {
   const handleStartAutonomousScraper = async () => {
     try {
       if (!autonomousUrl.trim()) {
-        alert('❌ Please enter Autonomous results URL');
+        alert('Please enter Autonomous results URL');
         return;
       }
       if (scrapingMode === 'single' && !singleUsn.trim()) {
-        alert('❌ Please enter USN for single mode');
+        alert('Please enter USN for single mode');
         return;
       }
       if (scrapingMode === 'batch' && !batchYear.trim()) {
-        alert('❌ Please enter batch year for batch mode');
+        alert('Please enter batch year for batch mode');
         return;
       }
 
@@ -688,7 +688,7 @@ const AdminDashboard: React.FC = () => {
       
       if (response.success) {
         setScraperSessionId(response.data.sessionId);
-        alert(`✅ Autonomous Scraper started!\nSession ID: ${response.data.sessionId}\nTotal USNs: ${response.data.totalUSNs}`);
+        alert(`Autonomous Scraper started!\nSession ID: ${response.data.sessionId}\nTotal USNs: ${response.data.totalUSNs}`);
       }
     } catch (error: any) {
       console.error('Autonomous scraper error:', error);
@@ -700,15 +700,15 @@ const AdminDashboard: React.FC = () => {
   const handleStartRVScraper = async () => {
     try {
       if (!vtuUrl.trim()) {
-        alert('❌ Please enter RV results URL');
+        alert('Please enter RV results URL');
         return;
       }
       if (!semester.trim()) {
-        alert('❌ Please enter semester number');
+        alert('Please enter semester number');
         return;
       }
       if (!singleUsn.trim()) {
-        alert('❌ Please enter USN (single mode) or upload Excel file (import mode)');
+        alert('Please enter USN (single mode) or upload Excel file (import mode)');
         return;
       }
 
@@ -730,7 +730,7 @@ const AdminDashboard: React.FC = () => {
       if (response.success) {
         setScraperSessionId(response.sessionId);
         const usnCount = singleUsn.split(',').length;
-        alert(`✅ RV Scraper started!\nSession ID: ${response.sessionId}\nTotal USNs: ${usnCount}`);
+        alert(`RV Scraper started!\nSession ID: ${response.sessionId}\nTotal USNs: ${usnCount}`);
       }
     } catch (error: any) {
       console.error('RV scraper error:', error);
@@ -742,14 +742,14 @@ const AdminDashboard: React.FC = () => {
   const handleStopScraper = async () => {
     try {
       if (!scraperSessionId) {
-        alert('❌ No active scraper session');
+        alert('No active scraper session');
         return;
       }
 
       await stopScraper(scraperSessionId);
       setIsScraping(false);
       setScraperSessionId(null);
-      alert('🛑 Scraper stopped');
+      alert('Scraper stopped');
     } catch (error: any) {
       console.error('Stop scraper error:', error);
       alert(error.response?.data?.message || 'Failed to stop scraper');
@@ -759,16 +759,16 @@ const AdminDashboard: React.FC = () => {
   const handleRetryFailedUSNs = async () => {
     try {
       if (!scraperSessionId) {
-        alert('❌ No session to retry');
+        alert('No session to retry');
         return;
       }
 
       if (!scraperProgress?.failures || scraperProgress.failures.length === 0) {
-        alert('✅ No failed USNs to retry');
+        alert('No failed USNs to retry');
         return;
       }
 
-      const confirmed = confirm(`🔄 Retry scraping ${scraperProgress.failures.length} failed USNs?`);
+      const confirmed = confirm(`Retry scraping ${scraperProgress.failures.length} failed USNs?`);
       if (!confirmed) return;
 
       // Get retry parameters based on scraper type
@@ -790,7 +790,7 @@ const AdminDashboard: React.FC = () => {
         setScraperSessionId(response.data.sessionId);
         setIsScraping(true);
         setScraperProgress(null); // Clear old progress
-        alert(`✅ Retry started! Session: ${response.data.sessionId}`);
+        alert(`Retry started! Session: ${response.data.sessionId}`);
       }
     } catch (error: any) {
       console.error('Retry failed USNs error:', error);
@@ -838,13 +838,18 @@ const AdminDashboard: React.FC = () => {
       {/* Header */}
       <header className="dashboard-header">
         <div className="header-content">
-          <div>
-            <h1>Admin Dashboard</h1>
-            <p className="header-subtitle">System Management & Analytics</p>
+          <div className="header-left">
+            <img src="/Logo.jpeg" alt="Logo" className="admin-logo" />
+            <div className="header-titles">
+              <h1>Admin Dashboard</h1>
+              <p className="header-subtitle">System Management & Analytics</p>
+            </div>
           </div>
-          <button onClick={handleLogout} className="logout-btn">
-            Logout
-          </button>
+          <div className="header-right">
+            <button onClick={handleLogout} className="logout-btn">
+              Logout
+            </button>
+          </div>
         </div>
       </header>
 
@@ -854,37 +859,37 @@ const AdminDashboard: React.FC = () => {
           className={`nav-btn ${activeView === 'overview' ? 'active' : ''}`}
           onClick={() => setActiveView('overview')}
         >
-          📊 Overview
+          Overview
         </button>
         <button 
           className={`nav-btn ${activeView === 'scraper' ? 'active' : ''}`}
           onClick={() => setActiveView('scraper')}
         >
-          🚀 Scraper
+          Scraper
         </button>
         <button 
           className={`nav-btn ${activeView === 'students' ? 'active' : ''}`}
           onClick={() => setActiveView('students')}
         >
-          👨‍🎓 Students
+          Students
         </button>
         <button 
           className={`nav-btn ${activeView === 'subjects' ? 'active' : ''}`}
           onClick={() => setActiveView('subjects')}
         >
-          📚 Subjects
+          Subjects
         </button>
         <button 
           className={`nav-btn ${activeView === 'teachers' ? 'active' : ''}`}
           onClick={() => setActiveView('teachers')}
         >
-          👨‍🏫 Teachers
+          Teachers
         </button>
         <button 
           className={`nav-btn ${activeView === 'users' ? 'active' : ''}`}
           onClick={() => setActiveView('users')}
         >
-          👥 User Management
+          User Management
         </button>
       </div>
 
@@ -1081,38 +1086,38 @@ const AdminDashboard: React.FC = () => {
       {/* Scraper Control Section */}
       {activeView === 'scraper' && (
         <div className="scraper-section">
-          <h2>🔍 Scraper Control Panel</h2>
+          <h2>Scraper Control Panel</h2>
           
           {/* Scraper Type Selector */}
-          <div className="scraper-type-selector">
+            <div className="scraper-type-selector">
             <button 
               className={`type-btn ${scraperType === 'vtu' ? 'active' : ''}`}
               onClick={() => setScraperType('vtu')}
             >
-              🎓 VTU Results
+              VTU Results
             </button>
             {/* <button 
               className={`type-btn ${scraperType === 'autonomous' ? 'active' : ''}`}
               onClick={() => setScraperType('autonomous')}
             >
-              🏫 Autonomous Results
+              Autonomous Results
             </button> */}
             <button 
               className={`type-btn ${scraperType === 'rv' ? 'active' : ''}`}
               onClick={() => setScraperType('rv')}
             >
-              📝 RV (Revaluation) Results
+              RV (Revaluation) Results
             </button>
           </div>
 
           {/* VTU Scraper Form */}
           {scraperType === 'vtu' && (
             <div className="scraper-card">
-              <h3>🎓 VTU Official Results Scraper</h3>
-              <p>Scrapes from VTU official website - Auto-detects semester from subject codes</p>
+              <h3>VTU Official Results Scraper</h3>
+              <p>Scrapes from VTU official website - auto-detects semester from subject codes</p>
               
               <div className="scraper-form">
-                <label>🔗 VTU Results URL (Required):</label>
+                <label>VTU Results URL (Required):</label>
                 <input 
                   type="text" 
                   value={vtuUrl}
@@ -1121,7 +1126,7 @@ const AdminDashboard: React.FC = () => {
                   className="scraper-input"
                 />
                 
-                <label>📋 Scraping Mode:</label>
+                <label>Scraping Mode:</label>
                 <div className="mode-selector">
                   <button 
                     className={`mode-btn ${scrapingMode === 'single' ? 'active' : ''}`}
@@ -1139,7 +1144,7 @@ const AdminDashboard: React.FC = () => {
 
                 {scrapingMode === 'single' && (
                   <>
-                    <label>🎯 Enter USN:</label>
+                    <label>Enter USN:</label>
                     <input 
                       type="text" 
                       value={singleUsn}
@@ -1152,7 +1157,7 @@ const AdminDashboard: React.FC = () => {
 
                 {scrapingMode === 'batch' && (
                   <>
-                    <label>📅 Select Batch Year:</label>
+                    <label>Select Batch Year:</label>
                     <select 
                       className="scraper-select"
                       value={batchYear}
@@ -1168,7 +1173,7 @@ const AdminDashboard: React.FC = () => {
                   </>
                 )}
                 
-                <label>📚 Semester:</label>
+                <label>Semester:</label>
                 <input 
                   type="text" 
                   value={semester}
@@ -1177,7 +1182,7 @@ const AdminDashboard: React.FC = () => {
                   className="scraper-input" 
                 />
                 
-                <label>⚙️ Number of Workers (threads):</label>
+                <label>Number of Workers (threads):</label>
                 <input 
                   type="number" 
                   value={workers}
@@ -1214,11 +1219,11 @@ const AdminDashboard: React.FC = () => {
           {/* Autonomous Scraper Form - COMMENTED OUT */}
           {/* {scraperType === 'autonomous' && (
             <div className="scraper-card">
-              <h3>🏫 Autonomous College Results Scraper</h3>
+              <h3>Autonomous College Results Scraper</h3>
               <p>Scrapes from ioncudos.in - Requires USN + DOB from database</p>
               
               <div className="scraper-form">
-                <label>🔗 Autonomous Results URL (Fixed):</label>
+                <label>Autonomous Results URL (Fixed):</label>
                 <input 
                   type="text" 
                   value={autonomousUrl}
@@ -1227,7 +1232,7 @@ const AdminDashboard: React.FC = () => {
                   className="scraper-input"
                 />
                 
-                <label>📋 Scraping Mode:</label>
+                <label>Scraping Mode:</label>
                 <div className="mode-selector">
                   <button 
                     className={`mode-btn ${scrapingMode === 'single' ? 'active' : ''}`}
@@ -1245,7 +1250,7 @@ const AdminDashboard: React.FC = () => {
 
                 {scrapingMode === 'single' && (
                   <>
-                    <label>🎯 Enter USN:</label>
+                    <label>Enter USN:</label>
                     <input 
                       type="text" 
                       value={singleUsn}
@@ -1258,7 +1263,7 @@ const AdminDashboard: React.FC = () => {
 
                 {scrapingMode === 'batch' && (
                   <>
-                    <label>📅 Select Batch Year:</label>
+                    <label>Select Batch Year:</label>
                     <select 
                       className="scraper-select"
                       value={batchYear}
@@ -1274,7 +1279,7 @@ const AdminDashboard: React.FC = () => {
                   </>
                 )}
                 
-                <label>⚙️ Number of Workers (threads):</label>
+                <label>Number of Workers (threads):</label>
                 <input 
                   type="number" 
                   value={workers}
@@ -1298,9 +1303,9 @@ const AdminDashboard: React.FC = () => {
                   <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
                     <li><strong>Single USN:</strong> Fetches DOB from database, scrapes that student</li>
                     <li><strong>Batch Year:</strong> Fetches all USNs + DOBs from database for that year</li>
-                    <li>🔐 DOB must exist in student_details table</li>
-                    <li>🌐 Uses Selenium for browser automation</li>
-                    <li>⏱️ Slower than VTU scraper (headless browser required)</li>
+                    <li>DOB must exist in student_details table</li>
+                    <li>Uses Selenium for browser automation</li>
+                    <li>Slower than VTU scraper (headless browser required)</li>
                   </ul>
                 </div>
               </div>
@@ -1310,11 +1315,11 @@ const AdminDashboard: React.FC = () => {
           {/* RV Scraper Form */}
           {scraperType === 'rv' && (
             <div className="scraper-card">
-              <h3>📝 RV (Revaluation) Results Scraper</h3>
-              <p>Scrapes revaluation results - Only a few students apply for RV, so import USN list via Excel</p>
+              <h3>RV (Revaluation) Results Scraper</h3>
+              <p>Scrapes revaluation results - import USN list via Excel for batch processing</p>
               
               <div className="scraper-form">
-                <label>🔗 RV Results URL (Required):</label>
+                <label>RV Results URL (Required):</label>
                 <input 
                   type="text" 
                   value={vtuUrl}
@@ -1323,7 +1328,7 @@ const AdminDashboard: React.FC = () => {
                   className="scraper-input"
                 />
 
-                <label>📚 Semester Number:</label>
+                <label>Semester Number:</label>
                 <input 
                   type="number" 
                   value={semester}
@@ -1334,7 +1339,7 @@ const AdminDashboard: React.FC = () => {
                   className="scraper-input" 
                 />
                 
-                <label>📋 Scraping Mode:</label>
+                <label>Scraping Mode:</label>
                 <div className="mode-selector">
                   <button 
                     className={`mode-btn ${scrapingMode === 'single' ? 'active' : ''}`}
@@ -1342,17 +1347,17 @@ const AdminDashboard: React.FC = () => {
                   >
                     Single USN
                   </button>
-                  <button 
-                    className={`mode-btn ${scrapingMode === 'batch' ? 'active' : ''}`}
-                    onClick={() => setScrapingMode('batch')}
-                  >
-                    📄 Import Excel
-                  </button>
+                    <button 
+                      className={`mode-btn ${scrapingMode === 'batch' ? 'active' : ''}`}
+                      onClick={() => setScrapingMode('batch')}
+                    >
+                      Import Excel
+                    </button>
                 </div>
 
                 {scrapingMode === 'single' && (
                   <>
-                    <label>🎯 Enter USN:</label>
+                    <label>Enter USN:</label>
                     <input 
                       type="text" 
                       value={singleUsn}
@@ -1365,7 +1370,7 @@ const AdminDashboard: React.FC = () => {
 
                 {scrapingMode === 'batch' && (
                   <>
-                    <label>� Upload Excel File with USN List:</label>
+                    <label>Upload Excel File with USN List:</label>
                     <input 
                       type="file"
                       accept=".xlsx,.xls"
@@ -1394,16 +1399,16 @@ const AdminDashboard: React.FC = () => {
                               });
                               
                               if (usns.length === 0) {
-                                alert('❌ No USNs found in Excel file. Make sure USNs are in the first column.');
+                                alert('No USNs found in Excel file. Make sure USNs are in the first column.');
                                 return;
                               }
                               
                               // Store USNs in state (we'll use singleUsn to store the list)
                               setSingleUsn(usns.join(','));
-                              alert(`✅ Loaded ${usns.length} USNs from Excel file:\n${usns.slice(0, 5).join(', ')}${usns.length > 5 ? '...' : ''}`);
+                              alert(`Loaded ${usns.length} USNs from Excel file:\n${usns.slice(0, 5).join(', ')}${usns.length > 5 ? '...' : ''}`);
                             } catch (error) {
                               console.error('Excel parsing error:', error);
-                              alert('❌ Failed to parse Excel file. Make sure it\'s a valid .xlsx or .xls file.');
+                              alert('Failed to parse Excel file. Make sure it\'s a valid .xlsx or .xls file.');
                             }
                           };
                           reader.readAsBinaryString(file);
@@ -1412,18 +1417,18 @@ const AdminDashboard: React.FC = () => {
                       className="scraper-input"
                       style={{ padding: '8px' }}
                     />
-                    <small style={{ color: '#666', display: 'block', marginTop: '4px' }}>
-                      📋 Excel format: First column should contain USNs (e.g., 1BI23IS001, 1BI23IS002...)
+                      <small style={{ color: '#666', display: 'block', marginTop: '4px' }}>
+                      Excel format: First column should contain USNs (e.g., 1BI23IS001, 1BI23IS002...)
                     </small>
                     {singleUsn && scrapingMode === 'batch' && (
                       <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#e3f2fd', borderRadius: '4px' }}>
-                        <strong>📊 Loaded USNs:</strong> {singleUsn.split(',').length} students
+                        <strong>Loaded USNs:</strong> {singleUsn.split(',').length} students
                       </div>
                     )}
                   </>
                 )}
                 
-                <label>⚙️ Number of Workers (threads):</label>
+                <label>Number of Workers (threads):</label>
                 <input 
                   type="number" 
                   value={workers}
@@ -1443,14 +1448,14 @@ const AdminDashboard: React.FC = () => {
                 </button>
 
                 <div className="info-box" style={{ marginTop: '16px', backgroundColor: '#e8f5e9', borderLeft: '4px solid #4caf50' }}>
-                  <p><strong>⚠️ RV Scraper - Excel Import Mode:</strong></p>
+                  <p><strong>RV Scraper - Excel Import Mode:</strong></p>
                   <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
                     <li><strong>Why Excel?</strong> Only a few students (5-15) apply for RV, not the entire batch</li>
                     <li><strong>Excel format:</strong> First column = USNs (e.g., 1BI23IS001, 1BI23IS002...)</li>
                     <li><strong>Updates records:</strong> Does NOT create new attempts</li>
                     <li><strong>Revaluation:</strong> Same attempt_number, updates external marks</li>
                     <li><strong>Auto-recalculation:</strong> Clears grades → calculate_grades.py reassigns</li>
-                    <li>📊 Auto-calculates SGPA/CGPA after completion</li>
+                    <li>Auto-calculates SGPA/CGPA after completion</li>
                   </ul>
                 </div>
               </div>
@@ -1459,7 +1464,7 @@ const AdminDashboard: React.FC = () => {
 
           {/* Scraper Progress Card */}
           <div className="scraper-card" style={{ marginTop: '24px' }}>
-            <h3>📊 Scraper Progress</h3>
+            <h3>Scraper Progress</h3>
             <div className="scraper-progress">
               {/* Loading State */}
               {isScraping && (
@@ -1473,8 +1478,8 @@ const AdminDashboard: React.FC = () => {
                     margin: '0 auto 20px',
                     animation: 'spin 1s linear infinite'
                   }}></div>
-                  <p className="progress-status" style={{ fontSize: '18px', fontWeight: 'bold', color: '#2e7d32' }}>
-                    🔄 Scraping in Progress...
+                  <p className="progress-status" style={{ fontSize: '18px', fontWeight: 'bold', color: '#b71c1c' }}>
+                    Scraping in Progress...
                   </p>
                   <div className="progress-bar-container" style={{ marginTop: '20px' }}>
                     <div 
@@ -1489,33 +1494,33 @@ const AdminDashboard: React.FC = () => {
                   <p className="progress-text" style={{ marginTop: '10px', fontSize: '16px' }}>
                     {scraperProgress ? `${scraperProgress.processed} / ${scraperProgress.total} USNs processed (${scraperProgress.percentage}%)` : '0 / 0 USNs processed'}
                   </p>
-                  <button 
-                    className="scraper-btn" 
-                    onClick={handleStopScraper}
-                    style={{ backgroundColor: '#d32f2f', marginTop: '20px' }}
-                  >
-                    🛑 Stop Scraper
-                  </button>
+                    <button 
+                      className="scraper-btn" 
+                      onClick={handleStopScraper}
+                      style={{ backgroundColor: '#b71c1c', marginTop: '20px' }}
+                    >
+                      Stop Scraper
+                    </button>
                 </div>
               )}
 
               {/* Completed State */}
               {!isScraping && scraperProgress?.status === 'completed' && (
                 <div>
-                  <p className="progress-status" style={{ fontSize: '18px', fontWeight: 'bold', color: '#1b5e20' }}>
-                    ✅ Scraping Completed!
+                  <p className="progress-status" style={{ fontSize: '18px', fontWeight: 'bold', color: '#1b5c1b' }}>
+                    Scraping Completed!
                   </p>
                   <div className="progress-stats" style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
-                    <div className="stat-item" style={{ textAlign: 'center', padding: '15px', backgroundColor: '#e8f5e9', borderRadius: '8px' }}>
-                      <span className="stat-label" style={{ display: 'block', fontSize: '14px', color: '#666' }}>✅ Success</span>
+                    <div className="stat-item" style={{ textAlign: 'center', padding: '15px', backgroundColor: '#fbe9e7', borderRadius: '8px' }}>
+                      <span className="stat-label" style={{ display: 'block', fontSize: '14px', color: '#666' }}>Success</span>
                       <span className="stat-value" style={{ display: 'block', fontSize: '28px', fontWeight: 'bold', color: '#2e7d32' }}>{scraperProgress?.success || 0}</span>
                     </div>
                     <div className="stat-item" style={{ textAlign: 'center', padding: '15px', backgroundColor: '#ffebee', borderRadius: '8px' }}>
-                      <span className="stat-label" style={{ display: 'block', fontSize: '14px', color: '#666' }}>❌ Failed</span>
+                      <span className="stat-label" style={{ display: 'block', fontSize: '14px', color: '#666' }}>Failed</span>
                       <span className="stat-value" style={{ display: 'block', fontSize: '28px', fontWeight: 'bold', color: '#d32f2f' }}>{scraperProgress?.failed || 0}</span>
                     </div>
                     <div className="stat-item" style={{ textAlign: 'center', padding: '15px', backgroundColor: '#e3f2fd', borderRadius: '8px' }}>
-                      <span className="stat-label" style={{ display: 'block', fontSize: '14px', color: '#666' }}>⏱️ Time</span>
+                      <span className="stat-label" style={{ display: 'block', fontSize: '14px', color: '#666' }}>Time</span>
                       <span className="stat-value" style={{ display: 'block', fontSize: '28px', fontWeight: 'bold', color: '#1976d2' }}>{scraperProgress?.timeTaken?.toFixed(1)}s</span>
                     </div>
                   </div>
@@ -1524,26 +1529,21 @@ const AdminDashboard: React.FC = () => {
                   {scraperProgress?.failures && scraperProgress.failures.length > 0 && (
                     <div style={{ marginTop: '25px', padding: '20px', backgroundColor: '#fff3e0', borderRadius: '8px', border: '2px solid #ff9800' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                        <h4 style={{ margin: 0, color: '#e65100' }}>⚠️ Failed USNs ({scraperProgress.failures.length})</h4>
+                        <h4 style={{ margin: 0, color: '#b71c1c' }}>Failed USNs ({scraperProgress.failures.length})</h4>
                         <button 
                           onClick={handleRetryFailedUSNs}
                           style={{
                             padding: '8px 16px',
-                            backgroundColor: '#ff9800',
+                            backgroundColor: '#b71c1c',
                             color: 'white',
                             border: 'none',
                             borderRadius: '6px',
                             cursor: 'pointer',
                             fontSize: '14px',
-                            fontWeight: 'bold',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px'
+                            fontWeight: 'bold'
                           }}
-                          onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#f57c00')}
-                          onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#ff9800')}
                         >
-                          🔄 Retry Failed USNs
+                          Retry Failed USNs
                         </button>
                       </div>
                       <div style={{ 
@@ -1563,13 +1563,13 @@ const AdminDashboard: React.FC = () => {
                               fontSize: '14px',
                               color: '#d84315'
                             }}>
-                              ❌ {usn}
+                              {usn}
                             </li>
                           ))}
                         </ul>
                       </div>
                       <p style={{ marginTop: '15px', fontSize: '13px', color: '#666' }}>
-                        💡 <strong>Note:</strong> Click "Retry Failed USNs" to automatically re-scrape only the failed students.
+                        <strong>Note:</strong> Click "Retry Failed USNs" to automatically re-scrape only the failed students.
                       </p>
                     </div>
                   )}
@@ -1577,16 +1577,16 @@ const AdminDashboard: React.FC = () => {
                   {/* Success Message if No Failures */}
                   {(!scraperProgress?.failures || scraperProgress.failures.length === 0) && (
                     <div style={{ marginTop: '25px', padding: '20px', backgroundColor: '#e8f5e9', borderRadius: '8px', border: '2px solid #4caf50', textAlign: 'center' }}>
-                      <h4 style={{ margin: 0, color: '#2e7d32', fontSize: '18px' }}>🎉 Perfect! All USNs scraped successfully!</h4>
+                      <h4 style={{ margin: 0, color: '#2e7d32', fontSize: '18px' }}>All USNs scraped successfully!</h4>
                     </div>
                   )}
                 </div>
               )}
 
               {/* Idle State */}
-              {!isScraping && (!scraperProgress || scraperProgress?.status !== 'completed') && (
+                  {!isScraping && (!scraperProgress || scraperProgress?.status !== 'completed') && (
                 <p className="progress-status" style={{ textAlign: 'center', padding: '40px', color: '#999', fontSize: '16px' }}>
-                  ⏸️ Idle - Start a scraper to see progress
+                  Idle - Start a scraper to see progress
                 </p>
               )}
             </div>
@@ -1597,11 +1597,10 @@ const AdminDashboard: React.FC = () => {
       {/* Students Management Section */}
       {activeView === 'students' && (
         <div className="management-section">
-          <h2>👨‍🎓 Student Management</h2>
+          <h2>Student Management</h2>
           <div className="section-card">
-            <h3>📤 Bulk Import Students from Excel</h3>
-            <p>Upload an Excel file with columns: <strong>USN, Name, Batch, Discipline, Scheme</strong> (Optional: Section, Gender, DOB)</p>
-            <p style={{ color: '#f44336', fontSize: '14px', marginTop: '8px' }}><strong>⚠️ Required:</strong> Discipline must be "VTU" or "Autonomous"</p>
+            <h3>Bulk Import Students from Excel</h3>
+            <p style={{ color: '#f44336', fontSize: '14px', marginTop: '8px' }}><strong>Required:</strong> Discipline must be "VTU" or "Autonomous"</p>
             <input 
               type="file" 
               accept=".xlsx,.xls" 
@@ -1613,7 +1612,7 @@ const AdminDashboard: React.FC = () => {
               }}
             />
             <div className="info-box" style={{ marginTop: '12px' }}>
-              <p><strong>📋 Excel Format Example:</strong></p>
+              <p><strong>Excel Format Example:</strong></p>
               <table style={{ fontSize: '12px', marginTop: '8px' }}>
                 <thead>
                   <tr>
@@ -1644,7 +1643,7 @@ const AdminDashboard: React.FC = () => {
           </div>
           
           <div className="section-card">
-            <h3>➕ Add Single Student</h3>
+            <h3>Add Single Student</h3>
             <div className="form-grid">
               <input 
                 type="text" 
@@ -1699,7 +1698,7 @@ const AdminDashboard: React.FC = () => {
               onClick={handleAddStudent}
               disabled={!studentFormData.usn || !studentFormData.name}
             >
-              ➕ Add Student
+              Add Student
             </button>
           </div>
         </div>
@@ -1708,11 +1707,10 @@ const AdminDashboard: React.FC = () => {
       {/* Subjects Management Section */}
       {activeView === 'subjects' && (
         <div className="management-section">
-          <h2>📚 Subject Management</h2>
+          <h2>Subject Management</h2>
           
           <div className="section-card">
-            <h3>📤 Bulk Import Subjects from Excel</h3>
-            <p>Upload Excel file with columns: <strong>Subject_Code, Subject_Name, Semester, Credits, Scheme, Is_Placeholder</strong></p>
+            <h3>Bulk Import Subjects from Excel</h3>
             <input 
               type="file" 
               accept=".xlsx,.xls" 
@@ -1724,7 +1722,7 @@ const AdminDashboard: React.FC = () => {
               }}
             />
             <div className="info-box" style={{ marginTop: '12px' }}>
-              <p><strong>📋 Excel Format Example:</strong></p>
+              <p><strong>Excel Format Example:</strong></p>
               <table style={{ fontSize: '12px', marginTop: '8px' }}>
                 <thead>
                   <tr>
@@ -1751,7 +1749,7 @@ const AdminDashboard: React.FC = () => {
           </div>
 
           <div className="section-card">
-            <h3>➕ Add Single Subject</h3>
+            <h3>Add Single Subject</h3>
             <div className="form-grid">
               <input 
                 type="text" 
@@ -1812,13 +1810,13 @@ const AdminDashboard: React.FC = () => {
               onClick={handleAddSubject}
               disabled={!subjectFormData.subjectCode || !subjectFormData.subjectName}
             >
-              ➕ Add Subject
+              Add Subject
             </button>
           </div>
 
           <div className="info-box">
-            <p><strong>💡 Auto-Addition:</strong> Subjects are automatically added when scraping encounters new subject codes. Manual addition is only needed for pre-population.</p>
-            <p><strong>📋 Excel Format:</strong> Column headers must match exactly - Subject_Code, Subject_Name, Semester, Credits, Scheme, Is_Placeholder</p>
+            <p><strong>Auto-Addition:</strong> Subjects are automatically added when scraping encounters new subject codes. Manual addition is only needed for pre-population.</p>
+            <p><strong>Excel Format:</strong> Column headers must match exactly - Subject_Code, Subject_Name, Semester, Credits, Scheme, Is_Placeholder</p>
           </div>
         </div>
       )}

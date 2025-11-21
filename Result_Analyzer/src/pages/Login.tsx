@@ -163,7 +163,7 @@ const Login = () => {
         </div>
         
         {/* Title */}
-        <h1 className="login-title">Student Result Analyzer</h1>
+        <h1 className="login-title">Result Analyser</h1>
         <p className="login-subtitle">Sign in to access your dashboard</p>
         
         {/* Error Message */}

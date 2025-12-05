@@ -253,13 +253,14 @@ exports.getClassRank = async (req, res) => {
     const { usn } = req.user;
     const { semester } = req.params;
     
-    // Get student's section
+    // Get student's section and batch
     const [studentData] = await mysqlPool.execute(
-      'SELECT section FROM student_details WHERE usn = ?',
+      'SELECT section, batch FROM student_details WHERE usn = ?',
       [usn]
     );
     
     const section = studentData[0]?.section;
+    const batch = studentData[0]?.batch;
     
     if (!section) {
       return res.json({
@@ -270,29 +271,30 @@ exports.getClassRank = async (req, res) => {
       });
     }
     
-    // Get rank in section for this semester
+    // Get rank in section for this semester (same batch only)
     const [rankData] = await mysqlPool.execute(
       `SELECT 
         COUNT(*) + 1 as student_rank
       FROM student_semester_summary sss
       JOIN student_details sd ON sss.student_usn = sd.usn
       WHERE sd.section = ?
+      AND sd.batch = ?
       AND sss.semester = ?
       AND sss.sgpa > (
         SELECT sgpa 
         FROM student_semester_summary 
         WHERE student_usn = ? AND semester = ?
       )`,
-      [section, semester, usn, semester]
+      [section, batch, semester, usn, semester]
     );
     
-    // Get total students in section
+    // Get total students in section (same batch only)
     const [totalData] = await mysqlPool.execute(
       `SELECT COUNT(DISTINCT sss.student_usn) as total_students
       FROM student_semester_summary sss
       JOIN student_details sd ON sss.student_usn = sd.usn
-      WHERE sd.section = ? AND sss.semester = ?`,
-      [section, semester]
+      WHERE sd.section = ? AND sd.batch = ? AND sss.semester = ?`,
+      [section, batch, semester]
     );
     
     res.json({

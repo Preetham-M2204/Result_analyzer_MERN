@@ -838,7 +838,9 @@ const getDetailedResults = async (req, res) => {
                  AND r.semester = latest.semester
                  AND r.attempt_number = latest.max_attempt
       ${whereClause}
-      ORDER BY s.section, s.usn, sub.subject_code
+      ORDER BY s.section, 
+               CAST(SUBSTRING(s.usn, -3) AS UNSIGNED), 
+               sub.subject_code
     `, params);
     
     // Get subject-wise pass percentage (LATEST ATTEMPT ONLY)

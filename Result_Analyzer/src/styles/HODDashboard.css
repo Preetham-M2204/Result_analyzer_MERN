@@ -189,7 +189,7 @@
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border: 1px solid rgba(0,0,0,0.02);
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   margin-bottom: 24px;
 }
 
@@ -338,9 +338,9 @@
 .table-container {
   background: white;
   border-radius: 12px;
-  overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   overflow-x: auto;
+  overflow-y: visible;
   border: 1px solid #eee;
 }
 

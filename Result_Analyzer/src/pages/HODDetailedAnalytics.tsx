@@ -454,14 +454,14 @@ const HODDetailedAnalytics = () => {
               <button 
                 onClick={() => setViewMode('subject')} 
                 className={`tab-btn ${viewMode === 'subject' ? 'active' : ''}`}
-                style={{ border: 'none', background: viewMode === 'subject' ? 'var(--primary-color)' : '#eee', color: viewMode === 'subject' ? 'white' : '#666', borderRadius: '4px' }}
+                style={{ border: 'none', background: viewMode === 'subject' ? '#f57c00' : '#eee', color: viewMode === 'subject' ? 'white' : '#666', borderRadius: '4px' }}
               >
                 Subject-wise View
               </button>
               <button 
                 onClick={() => setViewMode('student')} 
                 className={`tab-btn ${viewMode === 'student' ? 'active' : ''}`}
-                style={{ border: 'none', background: viewMode === 'student' ? 'var(--primary-color)' : '#eee', color: viewMode === 'student' ? 'white' : '#666', borderRadius: '4px' }}
+                style={{ border: 'none', background: viewMode === 'student' ? '#f57c00' : '#eee', color: viewMode === 'student' ? 'white' : '#666', borderRadius: '4px' }}
               >
                 Student-wise View
               </button>

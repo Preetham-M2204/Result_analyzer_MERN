@@ -12,7 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/apiClient';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import '../styles/HODDashboard.css';
 
 type TopPerformer = {
@@ -128,74 +128,258 @@ const HODDashboardEnhanced = () => {
     }
   };
 
-  // Export to Excel
+  // Export to Excel with color coding
   const exportToExcel = async () => {
     try {
-      let data: any[] = [];
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Data');
       let filename = 'export';
       
       if (tab === 'toppers') {
         // Export current toppers
         if (topperType === 'cgpa') {
-          data = toppers.map((t, i) => ({
-            'Rank': i + 1,
-            'USN': t.usn,
-            'Name': t.name,
-            'Batch': t.batch,
-            'Section': t.section || '-',
-            'CGPA': t.cgpa ? parseFloat(t.cgpa.toString()).toFixed(2) : '-',
-            'Backlogs': t.total_backlogs || 0
-          }));
           filename = `CGPA_Toppers_${selectedBatch}_${new Date().toISOString().split('T')[0]}`;
+          
+          // Add headers with styling
+          worksheet.columns = [
+            { header: 'Rank', key: 'rank', width: 8 },
+            { header: 'USN', key: 'usn', width: 15 },
+            { header: 'Name', key: 'name', width: 25 },
+            { header: 'Batch', key: 'batch', width: 10 },
+            { header: 'Section', key: 'section', width: 10 },
+            { header: 'CGPA', key: 'cgpa', width: 10 },
+            { header: 'Backlogs', key: 'backlogs', width: 12 }
+          ];
+          
+          // Style header row
+          worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+          worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
+          worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+          
+          // Add data rows
+          toppers.forEach((t, i) => {
+            const row = worksheet.addRow({
+              rank: i + 1,
+              usn: t.usn,
+              name: t.name,
+              batch: t.batch,
+              section: t.section || '-',
+              cgpa: t.cgpa ? parseFloat(t.cgpa.toString()).toFixed(2) : '-',
+              backlogs: t.total_backlogs || 0
+            });
+            
+            // Color code rank cell only for top 3
+            const rankCell = row.getCell('rank');
+            if (i === 0) {
+              rankCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFD700' } }; // Gold
+              rankCell.font = { bold: true };
+            } else if (i === 1) {
+              rankCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC0C0C0' } }; // Silver
+              rankCell.font = { bold: true };
+            } else if (i === 2) {
+              rankCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCD7F32' } }; // Bronze
+              rankCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            }
+            
+            // Color code backlogs
+            const backlogCell = row.getCell('backlogs');
+            if (t.total_backlogs && t.total_backlogs > 0) {
+              backlogCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF6B6B' } };
+              backlogCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            } else {
+              backlogCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF51CF66' } };
+              backlogCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            }
+          });
+          
         } else if (topperType === 'sgpa') {
-          data = toppers.map((t, i) => ({
-            'Rank': i + 1,
-            'USN': t.usn,
-            'Name': t.name,
-            'Batch': t.batch,
-            'Section': t.section || '-',
-            'Semester': t.semester,
-            'SGPA': t.sgpa ? parseFloat(t.sgpa.toString()).toFixed(2) : '-',
-            'Percentage': t.percentage ? parseFloat(t.percentage.toString()).toFixed(2) : '-',
-            'Grade': t.class_grade || '-',
-            'Backlogs': t.backlog_count || 0
-          }));
           filename = `SGPA_Toppers_Sem${selectedSemester}_${selectedBatch}_${new Date().toISOString().split('T')[0]}`;
+          
+          worksheet.columns = [
+            { header: 'Rank', key: 'rank', width: 8 },
+            { header: 'USN', key: 'usn', width: 15 },
+            { header: 'Name', key: 'name', width: 25 },
+            { header: 'Batch', key: 'batch', width: 10 },
+            { header: 'Section', key: 'section', width: 10 },
+            { header: 'Semester', key: 'semester', width: 10 },
+            { header: 'SGPA', key: 'sgpa', width: 10 },
+            { header: 'Percentage', key: 'percentage', width: 12 },
+            { header: 'Grade', key: 'grade', width: 10 },
+            { header: 'Backlogs', key: 'backlogs', width: 12 }
+          ];
+          
+          worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+          worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
+          worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+          
+          toppers.forEach((t, i) => {
+            const row = worksheet.addRow({
+              rank: i + 1,
+              usn: t.usn,
+              name: t.name,
+              batch: t.batch,
+              section: t.section || '-',
+              semester: t.semester,
+              sgpa: t.sgpa ? parseFloat(t.sgpa.toString()).toFixed(2) : '-',
+              percentage: t.percentage ? parseFloat(t.percentage.toString()).toFixed(2) : '-',
+              grade: t.class_grade || '-',
+              backlogs: t.backlog_count || 0
+            });
+            
+            // Top 3 rank cell highlighting only
+            const rankCell = row.getCell('rank');
+            if (i === 0) {
+              rankCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFD700' } }; // Gold
+              rankCell.font = { bold: true };
+            } else if (i === 1) {
+              rankCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC0C0C0' } }; // Silver
+              rankCell.font = { bold: true };
+            } else if (i === 2) {
+              rankCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCD7F32' } }; // Bronze
+              rankCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            }
+            
+            // Grade color coding
+            const gradeCell = row.getCell('grade');
+            const grade = t.class_grade;
+            if (grade === 'FCD') {
+              gradeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF51CF66' } };
+              gradeCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            } else if (grade === 'FC') {
+              gradeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF94D82D' } };
+              gradeCell.font = { bold: true };
+            } else if (grade === 'SC') {
+              gradeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFD43B' } };
+              gradeCell.font = { bold: true };
+            } else if (grade === 'P') {
+              gradeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFA94D' } };
+              gradeCell.font = { bold: true };
+            } else if (grade === 'F') {
+              gradeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF6B6B' } };
+              gradeCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            }
+            
+            // Backlog color coding
+            const backlogCell = row.getCell('backlogs');
+            if (t.backlog_count && t.backlog_count > 0) {
+              backlogCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF6B6B' } };
+              backlogCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            } else {
+              backlogCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF51CF66' } };
+              backlogCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            }
+          });
+          
         } else {
-          data = toppers.map((t, i) => ({
-            'Rank': i + 1,
-            'USN': t.usn,
-            'Name': t.name,
-            'Batch': t.batch,
-            'Section': t.section || '-',
-            'Semester': t.semester,
-            'Total Marks': t.cumulative_marks || '-',
-            'Maximum': t.cumulative_maximum || '-',
-            'Percentage': t.overall_percentage ? parseFloat(t.overall_percentage.toString()).toFixed(2) : '-'
-          }));
           filename = `Semester_Total_Toppers_${selectedSemester}_${selectedBatch}_${new Date().toISOString().split('T')[0]}`;
+          
+          worksheet.columns = [
+            { header: 'Rank', key: 'rank', width: 8 },
+            { header: 'USN', key: 'usn', width: 15 },
+            { header: 'Name', key: 'name', width: 25 },
+            { header: 'Batch', key: 'batch', width: 10 },
+            { header: 'Section', key: 'section', width: 10 },
+            { header: 'Semester', key: 'semester', width: 10 },
+            { header: 'Total Marks', key: 'total', width: 12 },
+            { header: 'Maximum', key: 'max', width: 12 },
+            { header: 'Percentage', key: 'percentage', width: 12 }
+          ];
+          
+          worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+          worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
+          worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+          
+          toppers.forEach((t, i) => {
+            const row = worksheet.addRow({
+              rank: i + 1,
+              usn: t.usn,
+              name: t.name,
+              batch: t.batch,
+              section: t.section || '-',
+              semester: t.semester,
+              total: t.cumulative_marks || '-',
+              max: t.cumulative_maximum || '-',
+              percentage: t.overall_percentage ? parseFloat(t.overall_percentage.toString()).toFixed(2) : '-'
+            });
+            
+            // Top 3 rank cell highlighting only
+            const rankCell = row.getCell('rank');
+            if (i === 0) {
+              rankCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFD700' } }; // Gold
+              rankCell.font = { bold: true };
+            } else if (i === 1) {
+              rankCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC0C0C0' } }; // Silver
+              rankCell.font = { bold: true };
+            } else if (i === 2) {
+              rankCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCD7F32' } }; // Bronze
+              rankCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            }
+          });
         }
       } else if (tab === 'statistics') {
-        data = batchStats.map(b => ({
-          'Batch': b.batch,
-          'Total Students': b.total_students,
-          'Sections': b.total_sections,
-          'Average CGPA': b.average_cgpa ? parseFloat(b.average_cgpa.toString()).toFixed(2) : '-',
-          'Highest CGPA': b.highest_cgpa ? parseFloat(b.highest_cgpa.toString()).toFixed(2) : '-',
-          'Lowest CGPA': b.lowest_cgpa ? parseFloat(b.lowest_cgpa.toString()).toFixed(2) : '-',
-          'Distinction': b.distinction_count || 0,
-          'First Class': b.first_class_count || 0
-        }));
         filename = `Batch_Statistics_${new Date().toISOString().split('T')[0]}`;
+        
+        worksheet.columns = [
+          { header: 'Batch', key: 'batch', width: 10 },
+          { header: 'Total Students', key: 'total', width: 15 },
+          { header: 'Sections', key: 'sections', width: 10 },
+          { header: 'Average CGPA', key: 'avg', width: 15 },
+          { header: 'Highest CGPA', key: 'high', width: 15 },
+          { header: 'Lowest CGPA', key: 'low', width: 15 },
+          { header: 'Distinction', key: 'distinction', width: 12 },
+          { header: 'First Class', key: 'firstclass', width: 12 }
+        ];
+        
+        worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
+        worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+        
+        batchStats.forEach((b) => {
+          const row = worksheet.addRow({
+            batch: b.batch,
+            total: b.total_students,
+            sections: b.total_sections,
+            avg: b.average_cgpa ? parseFloat(b.average_cgpa.toString()).toFixed(2) : '-',
+            high: b.highest_cgpa ? parseFloat(b.highest_cgpa.toString()).toFixed(2) : '-',
+            low: b.lowest_cgpa ? parseFloat(b.lowest_cgpa.toString()).toFixed(2) : '-',
+            distinction: b.distinction_count || 0,
+            firstclass: b.first_class_count || 0
+          });
+          
+          // Color code distinction/first class counts
+          const distinctionCell = row.getCell('distinction');
+          distinctionCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF51CF66' } };
+          distinctionCell.font = { bold: true };
+          
+          const fcCell = row.getCell('firstclass');
+          fcCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF94D82D' } };
+          fcCell.font = { bold: true };
+        });
       }
       
-      // Create worksheet and workbook
-      const ws = XLSX.utils.json_to_sheet(data);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Data');
+      // Apply borders to all cells
+      worksheet.eachRow((row) => {
+        row.eachCell((cell) => {
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+          };
+          cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        });
+      });
       
-      // Save file
-      XLSX.writeFile(wb, `${filename}.xlsx`);
+      // Generate and download file
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${filename}.xlsx`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+      
       alert('Excel file downloaded successfully!');
     } catch (err: any) {
       console.error('Export failed:', err);

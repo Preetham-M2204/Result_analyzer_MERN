@@ -12,7 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/apiClient';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import '../styles/HODDashboard.css';
 
 type StudentResult = {
@@ -121,63 +121,224 @@ const HODDetailedAnalytics = () => {
     }
   };
 
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     try {
-      const wb = XLSX.utils.book_new();
+      const workbook = new ExcelJS.Workbook();
       
       // Sheet 1: Subject-wise Statistics
-      const subjectData = subjectStats.map(s => ({
-        'Subject Code': s.subject_code,
-        'Subject Name': s.subject_name,
-        'Total Students': s.total_students,
-        'Passed': s.passed_count,
-        'Pass %': (s.pass_percentage ? parseFloat(s.pass_percentage.toString()).toFixed(2) : '0') + '%',
-        'Average': s.average_marks ? parseFloat(s.average_marks.toString()).toFixed(2) : '-',
-        'Highest': s.highest_marks,
-        'Lowest': s.lowest_marks
-      }));
-      const ws1 = XLSX.utils.json_to_sheet(subjectData);
-      XLSX.utils.book_append_sheet(wb, ws1, 'Subject Statistics');
+      const ws1 = workbook.addWorksheet('Subject Statistics');
+      ws1.columns = [
+        { header: 'Subject Code', key: 'code', width: 15 },
+        { header: 'Subject Name', key: 'name', width: 35 },
+        { header: 'Total Students', key: 'total', width: 15 },
+        { header: 'Passed', key: 'passed', width: 12 },
+        { header: 'Pass %', key: 'pass_pct', width: 12 },
+        { header: 'Average', key: 'avg', width: 12 },
+        { header: 'Highest', key: 'high', width: 12 },
+        { header: 'Lowest', key: 'low', width: 12 }
+      ];
       
-      // Sheet 2: Student-wise Results
+      // Header styling - apply to each cell individually
+      ws1.getRow(1).eachCell((cell) => {
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      });
+      
+      subjectStats.forEach(s => {
+        const row = ws1.addRow({
+          code: s.subject_code,
+          name: s.subject_name,
+          total: s.total_students,
+          passed: s.passed_count,
+          pass_pct: (s.pass_percentage ? parseFloat(s.pass_percentage.toString()).toFixed(2) : '0') + '%',
+          avg: s.average_marks ? parseFloat(s.average_marks.toString()).toFixed(2) : '-',
+          high: s.highest_marks,
+          low: s.lowest_marks
+        });
+        
+        // Bold subject codes
+        row.getCell('code').font = { bold: true };
+      });
+      
+      // Add borders to all cells
+      ws1.eachRow((row) => {
+        row.eachCell((cell) => {
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+          };
+          cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        });
+      });
+      
+      // Sheet 2: Student-wise Results  
+      const ws2 = workbook.addWorksheet('Student Results');
       const studentMap = new Map<string, any>();
+      const subjectCols: string[] = [];
+      
       results.forEach(r => {
         if (!studentMap.has(r.usn)) {
           studentMap.set(r.usn, {
-            'USN': r.usn,
-            'Name': r.name,
-            'Section': r.section,
-            'SGPA': r.sgpa ? parseFloat(r.sgpa.toString()).toFixed(2) : '-',
-            'Percentage': r.percentage ? parseFloat(r.percentage.toString()).toFixed(2) + '%' : '-',
-            'Grade': r.class_grade || '-',
-            'Backlogs': r.backlog_count || 0
+            usn: r.usn,
+            name: r.name,
+            section: r.section,
+            sgpa: r.sgpa ? parseFloat(r.sgpa.toString()).toFixed(2) : '-',
+            percentage: r.percentage ? parseFloat(r.percentage.toString()).toFixed(2) + '%' : '-',
+            grade: r.class_grade || '-',
+            backlogs: r.backlog_count || 0,
+            subjects: {}
           });
         }
-        const key = `${r.subject_code} (${r.subject_name})`;
-        studentMap.get(r.usn)[key] = `${r.total_marks} (${r.letter_grade})`;
+        const key = `${r.subject_code}`;
+        if (!subjectCols.includes(key)) subjectCols.push(key);
+        studentMap.get(r.usn).subjects[key] = { marks: r.total_marks, grade: r.letter_grade, status: r.result_status };
       });
       
-      const studentData = Array.from(studentMap.values());
-      const ws2 = XLSX.utils.json_to_sheet(studentData);
-      XLSX.utils.book_append_sheet(wb, ws2, 'Student Results');
+      // Define columns
+      const cols: any[] = [
+        { header: 'USN', key: 'usn', width: 15 },
+        { header: 'Name', key: 'name', width: 25 },
+        { header: 'Section', key: 'section', width: 10 }
+      ];
+      subjectCols.forEach(sc => cols.push({ header: sc, key: sc, width: 12 }));
+      cols.push(
+        { header: 'SGPA', key: 'sgpa', width: 10 },
+        { header: 'Percentage', key: 'percentage', width: 12 },
+        { header: 'Grade', key: 'grade', width: 10 },
+        { header: 'Backlogs', key: 'backlogs', width: 12 }
+      );
+      ws2.columns = cols;
+      
+      // Header styling - apply to each cell individually
+      ws2.getRow(1).eachCell((cell) => {
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      });
+      
+      Array.from(studentMap.values()).forEach(student => {
+        const rowData: any = {
+          usn: student.usn,
+          name: student.name,
+          section: student.section,
+          sgpa: student.sgpa,
+          percentage: student.percentage,
+          grade: student.grade,
+          backlogs: student.backlogs
+        };
+        subjectCols.forEach(sc => {
+          rowData[sc] = student.subjects[sc] ? `${student.subjects[sc].marks} (${student.subjects[sc].grade})` : '-';
+        });
+        
+        const row = ws2.addRow(rowData);
+        
+        // Color code subject cells based on pass/fail
+        subjectCols.forEach((sc, idx) => {
+          const cell = row.getCell(idx + 4);
+          if (student.subjects[sc]) {
+            const status = student.subjects[sc].status;
+            if (status === 'PASS' || status === 'P') {
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF51CF66' } };
+              cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            } else if (status === 'FAIL' || status === 'F') {
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF6B6B' } };
+              cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            }
+          }
+        });
+        
+        // Color code grade
+        const gradeCell = row.getCell('grade');
+        const grade = student.grade;
+        if (grade === 'FCD') {
+          gradeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF51CF66' } };
+          gradeCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        } else if (grade === 'FC') {
+          gradeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF94D82D' } };
+          gradeCell.font = { bold: true };
+        } else if (grade === 'SC') {
+          gradeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFD43B' } };
+          gradeCell.font = { bold: true };
+        } else if (grade === 'P') {
+          gradeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFA94D' } };
+          gradeCell.font = { bold: true };
+        } else if (grade === 'F') {
+          gradeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF6B6B' } };
+          gradeCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        }
+        
+        // Color code backlogs
+        const backlogCell = row.getCell('backlogs');
+        if (student.backlogs > 0) {
+          backlogCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF6B6B' } };
+          backlogCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        } else {
+          backlogCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF51CF66' } };
+          backlogCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        }
+      });
+      
+      // Add borders
+      ws2.eachRow((row) => {
+        row.eachCell((cell) => {
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+          };
+          cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        });
+      });
       
       // Sheet 3: Overall Statistics
       if (overallStats) {
-        const overallData = [
-          { 'Metric': 'Total Students', 'Value': overallStats.total_students },
-          { 'Metric': 'Average SGPA', 'Value': overallStats.average_sgpa ? parseFloat(overallStats.average_sgpa.toString()).toFixed(2) : '-' },
-          { 'Metric': 'Highest SGPA', 'Value': overallStats.highest_sgpa ? parseFloat(overallStats.highest_sgpa.toString()).toFixed(2) : '-' },
-          { 'Metric': 'Lowest SGPA', 'Value': overallStats.lowest_sgpa ? parseFloat(overallStats.lowest_sgpa.toString()).toFixed(2) : '-' },
-          { 'Metric': 'Students Passed', 'Value': overallStats.students_passed },
-          { 'Metric': 'Students with Backlogs', 'Value': overallStats.students_with_backlogs },
-          { 'Metric': 'Pass Percentage', 'Value': ((overallStats.students_passed / overallStats.total_students) * 100).toFixed(2) + '%' }
+        const ws3 = workbook.addWorksheet('Overall Stats');
+        ws3.columns = [
+          { header: 'Metric', key: 'metric', width: 30 },
+          { header: 'Value', key: 'value', width: 20 }
         ];
-        const ws3 = XLSX.utils.json_to_sheet(overallData);
-        XLSX.utils.book_append_sheet(wb, ws3, 'Overall Stats');
+        
+        ws3.getRow(1).eachCell((cell) => {
+          cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
+          cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        });
+        
+        ws3.addRow({ metric: 'Total Students', value: overallStats.total_students });
+        ws3.addRow({ metric: 'Average SGPA', value: overallStats.average_sgpa ? parseFloat(overallStats.average_sgpa.toString()).toFixed(2) : '-' });
+        ws3.addRow({ metric: 'Highest SGPA', value: overallStats.highest_sgpa ? parseFloat(overallStats.highest_sgpa.toString()).toFixed(2) : '-' });
+        ws3.addRow({ metric: 'Lowest SGPA', value: overallStats.lowest_sgpa ? parseFloat(overallStats.lowest_sgpa.toString()).toFixed(2) : '-' });
+        ws3.addRow({ metric: 'Students Passed', value: overallStats.students_passed });
+        ws3.addRow({ metric: 'Students with Backlogs', value: overallStats.students_with_backlogs });
+        ws3.addRow({ metric: 'Pass Percentage', value: ((overallStats.students_passed / overallStats.total_students) * 100).toFixed(2) + '%' });
+        
+        ws3.eachRow((row) => {
+          row.eachCell((cell) => {
+            cell.border = {
+              top: { style: 'thin' },
+              left: { style: 'thin' },
+              bottom: { style: 'thin' },
+              right: { style: 'thin' }
+            };
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+          });
+        });
       }
       
       const filename = `Detailed_Results_Batch${selectedBatch}_Sem${selectedSemester}_${selectedSection !== 'all' ? 'Sec' + selectedSection : 'All'}_${new Date().toISOString().split('T')[0]}.xlsx`;
-      XLSX.writeFile(wb, filename);
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.click();
+      window.URL.revokeObjectURL(url);
+      
       alert('Excel file downloaded successfully!');
     } catch (err: any) {
       console.error('Export failed:', err);
@@ -185,98 +346,251 @@ const HODDetailedAnalytics = () => {
     }
   };
 
-  const exportSubjectWise = (subjectCode: string, subjectName: string) => {
+  const exportSubjectWise = async (subjectCode: string, subjectName: string) => {
     try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet(subjectCode);
+      
+      worksheet.columns = [
+        { header: 'USN', key: 'usn', width: 15 },
+        { header: 'Name', key: 'name', width: 25 },
+        { header: 'Section', key: 'section', width: 10 },
+        { header: 'Internal', key: 'internal', width: 12 },
+        { header: 'External', key: 'external', width: 12 },
+        { header: 'Total', key: 'total', width: 12 },
+        { header: 'Grade', key: 'grade', width: 10 },
+        { header: 'Status', key: 'status', width: 12 }
+      ];
+      
+      // Header styling - apply to each cell individually
+      worksheet.getRow(1).eachCell((cell) => {
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      });
+      
       const subjectResults = results.filter(r => r.subject_code === subjectCode);
-      const data = subjectResults.map(r => ({
-        'USN': r.usn,
-        'Name': r.name,
-        'Section': r.section,
-        'Internal': r.internal_marks,
-        'External': r.external_marks,
-        'Total': r.total_marks,
-        'Grade': r.letter_grade,
-        'Status': r.result_status
-      }));
-
-      const ws = XLSX.utils.json_to_sheet(data);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, subjectCode);
+      subjectResults.forEach(r => {
+        const row = worksheet.addRow({
+          usn: r.usn,
+          name: r.name,
+          section: r.section,
+          internal: r.internal_marks,
+          external: r.external_marks,
+          total: r.total_marks,
+          grade: r.letter_grade,
+          status: r.result_status
+        });
+        
+        // Color code status
+        const statusCell = row.getCell('status');
+        if (r.result_status === 'PASS' || r.result_status === 'P') {
+          statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF51CF66' } };
+          statusCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        } else if (r.result_status === 'FAIL' || r.result_status === 'F') {
+          statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF6B6B' } };
+          statusCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        }
+      });
+      
+      // Add borders
+      worksheet.eachRow((row) => {
+        row.eachCell((cell) => {
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+          };
+          cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        });
+      });
       
       const filename = `${subjectCode}_${subjectName.replace(/[^a-zA-Z0-9]/g, '_')}_Batch${selectedBatch}_Sem${selectedSemester}_${new Date().toISOString().split('T')[0]}.xlsx`;
-      XLSX.writeFile(wb, filename);
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.click();
+      window.URL.revokeObjectURL(url);
+      
       alert('Subject-wise results exported!');
     } catch (err: any) {
       alert('Failed to export: ' + err.message);
     }
   };
 
-  const exportOverallSemester = () => {
+  const exportOverallSemester = async () => {
     try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Overall Semester Results');
+      
       // Group by student and pivot subjects
       const studentMap = new Map<string, any>();
+      const subjectCodes: string[] = [];
       
       results.forEach(r => {
         if (!studentMap.has(r.usn)) {
           studentMap.set(r.usn, {
-            'USN': r.usn,
-            'Name': r.name,
-            'Section': r.section
+            usn: r.usn,
+            name: r.name,
+            section: r.section,
+            subjects: {},
+            sgpa: r.sgpa ? parseFloat(r.sgpa.toString()).toFixed(2) : '-',
+            percentage: r.percentage ? parseFloat(r.percentage.toString()).toFixed(2) : '-',
+            class_grade: r.class_grade || '-',
+            backlogs: r.backlog_count || 0
           });
         }
         const student = studentMap.get(r.usn);
-        const prefix = r.subject_code;
-        student[`${prefix}_Internal`] = r.internal_marks;
-        student[`${prefix}_External`] = r.external_marks;
-        student[`${prefix}_Total`] = r.total_marks;
-        student[`${prefix}_Grade`] = r.letter_grade;
-        
-        // Add overall stats (same for all subjects of a student) - will be reordered later
-        if (!student['_sgpa']) {
-          student['_sgpa'] = r.sgpa ? parseFloat(r.sgpa.toString()).toFixed(2) : '-';
-          student['_percentage'] = r.percentage ? parseFloat(r.percentage.toString()).toFixed(2) : '-';
-          student['_class_grade'] = r.class_grade || '-';
-          student['_backlogs'] = r.backlog_count || 0;
-        }
+        const code = r.subject_code;
+        if (!subjectCodes.includes(code)) subjectCodes.push(code);
+        student.subjects[code] = {
+          internal: r.internal_marks,
+          external: r.external_marks,
+          total: r.total_marks,
+          grade: r.letter_grade,
+          status: r.result_status
+        };
       });
-
-      // Reorder columns: USN, Name, Section, all subject columns (sorted), then summary columns
-      const data = Array.from(studentMap.values()).map(student => {
-        const reordered: any = {
-          'USN': student.USN,
-          'Name': student.Name,
-          'Section': student.Section
+      
+      subjectCodes.sort();
+      
+      // Build columns dynamically
+      const cols: any[] = [
+        { header: 'USN', key: 'usn', width: 15 },
+        { header: 'Name', key: 'name', width: 25 },
+        { header: 'Section', key: 'section', width: 10 }
+      ];
+      
+      subjectCodes.forEach(code => {
+        cols.push(
+          { header: `${code}_Int`, key: `${code}_int`, width: 10 },
+          { header: `${code}_Ext`, key: `${code}_ext`, width: 10 },
+          { header: `${code}_Total`, key: `${code}_total`, width: 10 },
+          { header: `${code}_Grade`, key: `${code}_grade`, width: 10 }
+        );
+      });
+      
+      cols.push(
+        { header: 'Total Marks', key: 'total_marks', width: 12 },
+        { header: 'SGPA', key: 'sgpa', width: 10 },
+        { header: 'Class Grade', key: 'class_grade', width: 12 },
+        { header: 'Backlogs', key: 'backlogs', width: 12 }
+      );
+      
+      worksheet.columns = cols;
+      
+      // Header styling - apply to each cell individually
+      worksheet.getRow(1).eachCell((cell) => {
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      });
+      
+      // Add data rows
+      Array.from(studentMap.values()).forEach(student => {
+        const rowData: any = {
+          usn: student.usn,
+          name: student.name,
+          section: student.section,
+          sgpa: student.sgpa,
+          class_grade: student.class_grade,
+          backlogs: student.backlogs
         };
         
-        // Get all subject-related keys and sort them to ensure consistent ordering
-        const subjectKeys = Object.keys(student)
-          .filter(key => key !== 'USN' && key !== 'Name' && key !== 'Section' && !key.startsWith('_'))
-          .sort();
-        
-        // Add subject columns in sorted order
-        let totalMarksObtained = 0;
-        subjectKeys.forEach(key => {
-          reordered[key] = student[key];
-          if (key.endsWith('_Total')) {
-            totalMarksObtained += student[key] || 0;
+        let totalMarks = 0;
+        subjectCodes.forEach(code => {
+          const sub = student.subjects[code];
+          if (sub) {
+            rowData[`${code}_int`] = sub.internal;
+            rowData[`${code}_ext`] = sub.external;
+            rowData[`${code}_total`] = sub.total;
+            rowData[`${code}_grade`] = sub.grade;
+            totalMarks += sub.total || 0;
+          } else {
+            rowData[`${code}_int`] = '-';
+            rowData[`${code}_ext`] = '-';
+            rowData[`${code}_total`] = '-';
+            rowData[`${code}_grade`] = '-';
           }
         });
         
-        // Add summary columns at the end
-        reordered['Total_Marks_Obtained'] = totalMarksObtained;
-        reordered['SGPA'] = student._sgpa;
-        reordered['Class_Grade'] = student._class_grade;
-        reordered['Backlogs'] = student._backlogs;
+        rowData.total_marks = totalMarks;
         
-        return reordered;
+        const row = worksheet.addRow(rowData);
+        
+        // Color code grade cells based on pass/fail
+        subjectCodes.forEach((code, idx) => {
+          const sub = student.subjects[code];
+          if (sub) {
+            const gradeCell = row.getCell(`${code}_grade`);
+            if (sub.status === 'PASS' || sub.status === 'P') {
+              gradeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF51CF66' } };
+              gradeCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            } else if (sub.status === 'FAIL' || sub.status === 'F') {
+              gradeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF6B6B' } };
+              gradeCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            }
+          }
+        });
+        
+        // Color code class grade
+        const gradeCell = row.getCell('class_grade');
+        const grade = student.class_grade;
+        if (grade === 'FCD') {
+          gradeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF51CF66' } };
+          gradeCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        } else if (grade === 'FC') {
+          gradeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF94D82D' } };
+          gradeCell.font = { bold: true };
+        } else if (grade === 'SC') {
+          gradeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFD43B' } };
+          gradeCell.font = { bold: true };
+        } else if (grade === 'P') {
+          gradeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFA94D' } };
+          gradeCell.font = { bold: true };
+        } else if (grade === 'F') {
+          gradeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF6B6B' } };
+          gradeCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        }
+        
+        // Color code backlogs
+        const backlogCell = row.getCell('backlogs');
+        if (student.backlogs > 0) {
+          backlogCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF6B6B' } };
+          backlogCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        } else {
+          backlogCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF51CF66' } };
+          backlogCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        }
       });
-
-      const ws = XLSX.utils.json_to_sheet(data);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Overall Semester Results');
+      
+      // Add borders to all cells
+      worksheet.eachRow((row) => {
+        row.eachCell((cell) => {
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+          };
+          cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        });
+      });
       
       const filename = `Overall_Semester_Results_Batch${selectedBatch}_Sem${selectedSemester}_${selectedSection !== 'all' ? 'Sec' + selectedSection : 'All'}_${new Date().toISOString().split('T')[0]}.xlsx`;
-      XLSX.writeFile(wb, filename);
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.click();
+      window.URL.revokeObjectURL(url);
+      
       alert('Overall semester results exported!');
     } catch (err: any) {
       alert('Failed to export: ' + err.message);

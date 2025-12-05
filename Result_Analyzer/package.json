@@ -19,6 +19,7 @@
     "@mui/material": "^7.3.5",
     "axios": "^1.13.1",
     "chart.js": "^4.5.1",
+    "exceljs": "^4.4.0",
     "jspdf": "^3.0.3",
     "jspdf-autotable": "^5.0.2",
     "python-shell": "^5.0.0",
